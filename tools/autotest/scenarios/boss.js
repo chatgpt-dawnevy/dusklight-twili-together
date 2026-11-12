@@ -21,7 +21,7 @@ const fightStart = [
     { op: "keepLife" },
     { op: "markMaxLife" },
     // The arena plays its intro on entry.
-    { op: "waitBossFight", quietTicks: 90, timeoutSec: 240 },
+    { op: "waitBossFight", quietTicks: 90, pressA: true, timeoutSec: 240 },
 ];
 
 // A boss arena with the boss alive (lib.js's bossRoom checkpoints have it beaten).

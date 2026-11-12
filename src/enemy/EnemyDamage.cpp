@@ -88,12 +88,16 @@ bool isDamageShareable(s16 procName, u32 params) {
     case fpcNm_E_BS_e:   // Stalkin
     case fpcNm_E_ST_e:   // Skulltula
     case fpcNm_E_FS_e:   // Wooden Puppet
+    case fpcNm_E_SG_e:   // Skullfish
+    case fpcNm_E_TK_e:   // Water Toadpoli
     case fpcNm_E_HZ_e:   // Tile Worm
     case fpcNm_E_S1_e:   // Shadow Beast (downed at 0; the group revive stays local)
     case fpcNm_E_SF_e:   // Stalfos (collapsed at 0, back up at full)
     case fpcNm_E_MM_e:   // Helmasaur (helmet hits through sharedHealth)
     case fpcNm_E_SM_e:   // Chu Worm (its four counted hits too)
         return true;
+    case fpcNm_E_FZ_e:   // Mini Freezard outside Blizzeta's encounter.
+        return (params & 0xFF) != 3;
     case fpcNm_E_RD_e: {
         // Not King Bulblin.
         const u8 arg0 = params & 0xFF;
