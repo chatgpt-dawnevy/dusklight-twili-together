@@ -187,7 +187,7 @@ module.exports = [
     },
     {
         name: "enemy-kill-sync",
-        description: "with Sync Enemy Deaths on, Bokoblins A kills (its own death, a puff and delete that sets the zone actor bit, a fall into the void) vanish for B and the zone actor bit is mirrored; a Tektite vanishes too; a plain delete and a Mini Freezard (not allowlisted) do not sync, and nothing echoes back",
+        description: "with Sync Enemy Deaths on, Bokoblins A kills (its own death, a puff and delete that sets the zone actor bit, a fall into the void) vanish for B and the zone actor bit is mirrored; a Tektite vanishes too; a plain delete and a Mini Freezard removed outside its native death do not sync, and nothing echoes back",
         timeoutSec: 300,
         cvars: CVARS,
         instances: [

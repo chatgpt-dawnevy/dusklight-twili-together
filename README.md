@@ -220,7 +220,7 @@ older builds go without it or without those clicks.
 - The ImGui state-share debug tool is not supported while connected.
 - Reloading or disabling the mod from the Mods window while connected is not covered by the
   automated tests.
-- Only Windows has been tested.
+- The enemy and item sync regression scenarios also run against Dusklight 2.0.3 on Linux.
 - There is no public relay; someone in your group hosts one.
 
 ## Known issues
