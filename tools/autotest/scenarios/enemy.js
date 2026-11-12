@@ -24,6 +24,9 @@ const SHADOW_BEAST = { name: "E_s1", param: 0xffffffff, dy: 30 };
 const STALFOS = { name: "E_sf", param: 0xffffffff, angleZ: 0xff, dy: 30 };
 const HELMASAUR = { name: "E_mm", param: 0xffffffff, dy: 30 };
 const CHU_WORM = { name: "E_sm", param: 0xffffffff, dy: 30 };
+const RAT = { name: "E_ms", param: 0xffffff00, dy: 30 };
+const BOMBSKIT = { name: "E_cr", param: 0xffffffff, dy: 30 };
+const SHADOW_INSECT = { name: "E_ym", param: 0x19ffff00, dy: 30 };
 // E_Make (d_a_obj_enemy_create.cpp): type, count, activate and deactivate switches, no loop end.
 const SPAWNER = (type, count, on, off) => ({
     name: "E_Make",
@@ -245,6 +248,21 @@ module.exports = [
             },
         ],
     },
+    pair("enemy-one-hit-and-shadow-insect",
+        "a rat, a Bombskit and a Shadow Insect defeated by A disappear for B; B gets the insect switch",
+        (isA, other) => [
+            ...syncOn(isA),
+            ...spawnAndSettle([["rat", RAT, -200, 250], ["bombskit", BOMBSKIT, 200, 250],
+                ["insect", SHADOW_INSECT, 0, 300]]),
+            health("rat", 1),
+            health("bombskit", 1),
+            { op: "expectSwitch", no: 0x19, room: 0, set: false, timeoutSec: 0 },
+            ...barrier("spawned", other),
+            ...(isA ? ["rat", "bombskit", "insect"].map((tag) => ({ op: "killEnemy", tag })) : []),
+            ...["rat", "bombskit", "insect"].map((tag) => ({ op: "expectEnemyGone", tag })),
+            ...(isA ? [] : [{ op: "expectSwitch", no: 0x19, room: 0, timeoutSec: 15 }]),
+            { op: "expectEnemySync", ...(isA ? { sent: 3, received: 0 } : { received: 3, applied: 3 }) },
+        ]),
     {
         name: "enemy-kill-scope",
         description: "a kill reaches a teammate but not a player on another team, and nobody once the owner turns Sync Enemy Deaths off",

@@ -2,6 +2,7 @@
 
 #include "enemy/EnemyDamage.hpp"
 
+#include "boss/BossFight.hpp"
 #include "core/Config.hpp"
 #include "core/Log.hpp"
 #include "core/SaveGate.hpp"
@@ -21,7 +22,6 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cstring>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -43,8 +43,7 @@ constexpr int kHelmetHealth = 2000;
 struct Rec {
     fopAc_ac_c* actor;  // valid until onActorDeleted
     enemy_sync::SpawnKey key;
-    char stage[8];
-    int8_t layer;
+    enemy_sync::detail::Location location;
     int16_t floor;
     int16_t lastHealth;
     int lastPct;
@@ -55,12 +54,12 @@ struct Rec {
 
 struct Out {
     Hit hit;
-    char stage[8];
-    int8_t layer;
+    enemy_sync::detail::Location location;
 };
 
 struct Pending {
     Hit hit;
+    enemy_sync::detail::Location location;
     Clock::time_point at;
 };
 
@@ -73,6 +72,8 @@ Stats s_stats{};
 // remote hits never touch a revive state.
 bool isDamageShareable(s16 procName, u32 params) {
     switch (procName) {
+    case fpcNm_E_DT_e:   // Deku Toad
+    case fpcNm_B_DR_e:   // Argorok
     case fpcNm_E_OC_e:   // Bokoblin
     case fpcNm_E_MF_e:   // Dynalfos
     case fpcNm_E_DN_e:   // Lizalfos
@@ -165,12 +166,11 @@ void flush() {
             const Out& first = s_outbox[i];
             size_t n = 0;
             while (i < s_outbox.size() && n < kMaxHitsPerPacket &&
-                   std::strncmp(s_outbox[i].stage, first.stage, sizeof(first.stage)) == 0 &&
-                   s_outbox[i].layer == first.layer)
+                   s_outbox[i].location.matches(first.location))
             {
                 batch[n++] = s_outbox[i++].hit;
             }
-            if (detail::sendHits(first.stage, first.layer, batch, n)) {
+            if (detail::sendHits(first.location.stage.data(), first.location.layer, batch, n)) {
                 s_stats.sent += static_cast<uint32_t>(n);
             }
         }
@@ -180,9 +180,19 @@ void flush() {
 
 enum class Apply { Done, NoMatch };
 
-Apply tryApply(const Hit& h) {
+Apply tryApply(const Pending& pending) {
+    const Hit& h = pending.hit;
     for (auto& [id, r] : s_recs) {
-        if (!enemy_sync::sameKey(r.key, h.key) || !fopAcM_IsExecuting(id)) {
+        if (!pending.location.matches(r.location) || !enemy_sync::sameKey(r.key, h.key) ||
+            !fopAcM_IsExecuting(id))
+        {
+            continue;
+        }
+        if (boss::isBossProfile(r.key.procName) &&
+            (dComIfGp_isEnableNextStage() || dComIfGp_event_runCheck() || !boss::fighting() ||
+                !boss::inArena(r.location.stage.data(), fopAcM_GetRoomNo(r.actor)) ||
+                fopAcM_GetRoomNo(r.actor) != dStage_roomControl_c::getStayNo()))
+        {
             continue;
         }
         fopAc_ac_c* ac = r.actor;
@@ -257,9 +267,13 @@ int countedHitsLeft(fopAc_ac_c* ac) {
 
 void onActorCreated(fopAc_ac_c* ac) {
     const fpc_ProcID id = fopAcM_GetID(ac);
+    enemy_sync::SpawnKey argorokKey{};
     const enemy_sync::SpawnKey* key = enemy_sync::trackedKey(id);
-    const char* stage = dComIfGp_getStartStageName();
-    if (key == nullptr || stage == nullptr || !isDamageShareable(key->procName, key->params)) {
+    if (fopAcM_GetName(ac) == fpcNm_B_DR_e && enemy_sync::appendKey(ac, argorokKey)) {
+        key = &argorokKey;
+    }
+    const auto location = enemy_sync::detail::currentLocation();
+    if (key == nullptr || location.stage[0] == '\0' || !isDamageShareable(key->procName, key->params)) {
         return;
     }
     const int16_t floor = floorOf(key->procName);
@@ -270,8 +284,7 @@ void onActorCreated(fopAc_ac_c* ac) {
     Rec r{};
     r.actor = ac;
     r.key = *key;
-    std::strncpy(r.stage, stage, sizeof(r.stage) - 1);
-    r.layer = static_cast<int8_t>(dComIfG_play_c::getLayerNo(0));
+    r.location = location;
     r.floor = floor;
     r.lastHealth = static_cast<int16_t>(sharedHealth(ac));
     r.lastPct = appliedPct(id);
@@ -310,15 +323,19 @@ void poll() {
         const int hits = countedHitsLeft(r.actor);
         const int lostHits = hits >= 0 && r.lastHits > hits ? r.lastHits - hits : 0;
         // A lethal loss is a kill: enemy_sync reports it.
-        if (share && (cur < r.lastHealth || lostHits > 0) && cur > 0 && hits != 0 &&
-            (recent(r.hitAt, now) || recent(r.biteAt, now)) && !enemy_sync::isDying(id))
+        // Argorok subtracts sword damage directly in its weak-point handler.
+        const bool bossInArena = boss::fighting() && boss::inArena(r.location.stage.data(), fopAcM_GetRoomNo(r.actor)) &&
+            fopAcM_GetRoomNo(r.actor) == dStage_roomControl_c::getStayNo();
+        const bool localDamage = r.key.procName == fpcNm_B_DR_e || recent(r.hitAt, now) ||
+            recent(r.biteAt, now);
+        if (share && (cur < r.lastHealth || lostHits > 0) && cur > 0 && hits != 0 && localDamage &&
+            (!boss::isBossProfile(r.key.procName) || bossInArena) && !enemy_sync::isDying(id))
         {
             Out o{};
             o.hit = {r.key, static_cast<uint16_t>(std::max(0, r.lastHealth - cur)),
                 static_cast<uint16_t>(pct), static_cast<int16_t>((cur * 100 + pct / 2) / pct),
                 static_cast<uint8_t>(lostHits)};
-            std::memcpy(o.stage, r.stage, sizeof(o.stage));
-            o.layer = r.layer;
+            o.location = r.location;
             s_outbox.push_back(o);
         }
         r.lastHealth = static_cast<int16_t>(cur);
@@ -340,7 +357,7 @@ void detail::queueRemote(const Hit& hit) {
         s_pending.erase(s_pending.begin());
         ++s_stats.dropped;
     }
-    s_pending.push_back({hit, Clock::now()});
+    s_pending.push_back({hit, enemy_sync::detail::currentLocation(), Clock::now()});
 }
 
 void tick() {
@@ -352,13 +369,17 @@ void tick() {
         return;
     }
     const auto now = Clock::now();
+    const auto current = enemy_sync::detail::currentLocation();
     for (auto it = s_pending.begin(); it != s_pending.end();) {
-        if (tryApply(it->hit) == Apply::Done) {
+        if (!it->location.matches(current)) {
+            ++s_stats.dropped;
             it = s_pending.erase(it);
         } else if (now - it->at > kPendingTtl) {
             ++s_stats.dropped;
             TwiliLog.debug("[enemy] a teammate's hit expired, no matching enemy here ({})",
                 enemy_sync::keyText(it->hit.key));
+            it = s_pending.erase(it);
+        } else if (tryApply(*it) == Apply::Done) {
             it = s_pending.erase(it);
         } else {
             ++it;
@@ -393,7 +414,7 @@ bool sendForTest(fopAc_ac_c* ac, int dmg, int pct, int hpAfter, int hits) {
     const Rec& r = it->second;
     const Hit hit{r.key, static_cast<uint16_t>(dmg), static_cast<uint16_t>(pct),
         static_cast<int16_t>(hpAfter), static_cast<uint8_t>(hits)};
-    return detail::sendHits(r.stage, r.layer, &hit, 1);
+    return detail::sendHits(r.location.stage.data(), r.location.layer, &hit, 1);
 }
 
 }  // namespace twili::enemy_damage

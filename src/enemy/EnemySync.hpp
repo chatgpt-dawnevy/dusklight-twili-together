@@ -4,6 +4,7 @@
 
 #include <nlohmann/json_fwd.hpp>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -84,6 +85,16 @@ struct Stats {
 const Stats& stats();
 
 namespace detail {
+struct Location {
+    std::array<char, 8> stage{};
+    int layer = -128;
+
+    bool matches(const Location& other) const {
+        return stage[0] != '\0' && stage == other.stage && layer == other.layer;
+    }
+};
+Location currentLocation();
+
 bool intField(const nlohmann::json& j, const char* key, int64_t lo, int64_t hi, int64_t& out);
 bool parseKey(const nlohmann::json& j, SpawnKey& out);
 nlohmann::json keyJson(const SpawnKey& key);
