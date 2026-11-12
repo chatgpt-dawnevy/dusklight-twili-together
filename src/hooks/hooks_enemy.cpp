@@ -10,6 +10,7 @@
 
 #include "SSystem/SComponent/c_phase.h"
 #include "d/actor/d_a_e_bs.h"
+#include "d/actor/d_a_e_fz.h"
 #include "d/actor/d_a_e_oc.h"
 #include "d/actor/d_a_e_s1.h"
 #include "d/d_cc_uty.h"
@@ -69,8 +70,16 @@ HookAction onDeleteRequestPre(ModContext*, void* args, void*, void*) {
         return HOOK_CONTINUE;
     }
     auto* actor = mods::arg<fopAc_ac_c*>(args, 0);
-    if (actor != nullptr && Scope::owner(ScopeKind::EnemyDamage) == actor) {
-        enemy_sync::markDefeated(actor);
+    if (actor != nullptr) {
+        // Mini Freezard's executeDamage deletes it without creating a DISAPPEAR actor.
+        if (fopAcM_GetName(actor) == fpcNm_E_FZ_e && actor->health == 0) {
+            const auto* freezard = static_cast<const daE_FZ_c*>(actor);
+            if (freezard->mActionMode == ACT_DAMAGE && freezard->mActionPhase == 0) {
+                enemy_sync::markDefeated(actor);
+            }
+        } else if (Scope::owner(ScopeKind::EnemyDamage) == actor) {
+            enemy_sync::markDefeated(actor);
+        }
     }
     enemy_sync::onDeleteRequest(actor);
     return HOOK_CONTINUE;

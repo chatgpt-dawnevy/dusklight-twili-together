@@ -13,6 +13,7 @@
 
 #include "d/d_kankyo.h"  // LIGHT_INFLUENCE for d_a_e_fm.h
 
+#include "d/actor/d_a_b_bq.h"
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_hz.h"
@@ -106,6 +107,29 @@ bool dekuToadReady(const fopAc_ac_c* ac) {
     return toad->mAction != kDekuToadOpening && !toad->mLinkPressed;
 }
 
+// d_a_b_bq.cpp: the body starts the native clear with ACTION_END and demo mode 50.
+constexpr int kDiababaStay = 0;
+constexpr int kDiababaDeath = 4;
+constexpr int kDiababaDeathDemo = 50;
+
+bool diababaIsDead(const fopAc_ac_c* ac) {
+    return static_cast<const b_bq_class*>(ac)->mAction == kDiababaDeath;
+}
+
+bool diababaReady(const fopAc_ac_c* ac) {
+    const auto* diababa = static_cast<const b_bq_class*>(ac);
+    // The native clear dereferences its bomb-carrying monkey as soon as the event starts.
+    return diababa->mAction != kDiababaStay && diababa->mDemoMode == 0 &&
+           fopAcM_IsExecuting(diababa->mMonkeyBombID);
+}
+
+void diababaKill(fopAc_ac_c* ac) {
+    auto* diababa = static_cast<b_bq_class*>(ac);
+    diababa->mAction = kDiababaDeath;
+    diababa->mMode = 0;
+    diababa->mDemoMode = kDiababaDeathDemo;
+}
+
 // ACTION_START and ACTION_END in d_a_e_fm.cpp.
 constexpr int kFyrusOpening = 11;
 constexpr int kFyrusDeath = 12;
@@ -157,6 +181,7 @@ void twilitBloatKill(fopAc_ac_c* ac) {
 }
 
 constexpr InPlaceDeath kInPlace[] = {
+    {fpcNm_B_BQ_e, diababaIsDead, diababaKill, diababaReady, false},
     {fpcNm_E_HZ_e, hzIsDead, hzKill, nullptr, true},
     {fpcNm_E_DT_e, dekuToadIsDead, dekuToadKill, dekuToadReady, false},
     {fpcNm_E_FM_e, fyrusIsDead, fyrusKill, fyrusReady, false},
@@ -241,6 +266,13 @@ bool isKillSyncable(s16 procName, u32 params) {
     case fpcNm_E_RB_e:   // Leever
     case fpcNm_E_CR_e:   // Bombskit
     case fpcNm_E_YK_e:   // Shadow Keese
+    case fpcNm_E_DK_e:   // Bari
+    case fpcNm_E_GE_e:   // Guay
+    case fpcNm_E_SG_e:   // Skullfish
+    case fpcNm_E_TK_e:   // Water Toadpoli
+    case fpcNm_E_TK2_e:  // Fire Toadpoli
+    case fpcNm_E_WS_e:   // Wall Skulltula
+    case fpcNm_B_BQ_e:   // Diababa
     case fpcNm_E_DT_e:   // Deku Toad
     case fpcNm_E_FM_e:   // Fyrus
     case fpcNm_E_YMB_e:  // Twilit Bloat
@@ -248,6 +280,9 @@ bool isKillSyncable(s16 procName, u32 params) {
     case fpcNm_E_BS_e:   // Stalkin (no puff: markDefeated)
     case fpcNm_E_HZ_e:   // Tile Worm (defeated in place)
         return true;
+    case fpcNm_E_FZ_e:   // Blizzeta owns and controls variant 3.
+        return (params & 0xFF) != 3;
+    case fpcNm_E_NZ_e:   // Ghoul Rat; variant 1 reappears at its spawn.
     case fpcNm_E_MS_e:   // Rat; variant 1 resets itself after a kill.
     case fpcNm_E_YG_e:   // Twilight Vermin; variant 1 resets itself after a kill.
         return (params & 0xFF) != 1;
@@ -352,6 +387,8 @@ void applyDeathSwitch(fopAc_ac_c* actor, const SpawnKey& key) {
     unsigned bit = 0xFF;
     if (key.procName == fpcNm_E_YM_e || key.procName == fpcNm_E_YK_e) {
         bit = key.params >> 24;
+    } else if (key.procName == fpcNm_E_GE_e || key.procName == fpcNm_E_WS_e) {
+        bit = (key.params >> 8) & 0xFF;
     } else if (key.procName == fpcNm_E_YG_e || key.procName == fpcNm_E_MS_e) {
         bit = (key.params >> 16) & 0xFF;
     }
@@ -548,7 +585,7 @@ void onActorDeleted(fopAc_ac_c* ac) {
     if (r.reported || r.remoteRemoved) {
         return;
     }
-    const bool paired = !isUnset(r.disappearAt) && !isUnset(r.deleteAt) &&
+    const bool paired = r.key.procName != fpcNm_E_FZ_e && !isUnset(r.disappearAt) && !isUnset(r.deleteAt) &&
                         (r.disappearAt > r.deleteAt ? r.disappearAt - r.deleteAt :
                                                       r.deleteAt - r.disappearAt) <= kPairWindow;
     if (!r.defeated && !paired) {

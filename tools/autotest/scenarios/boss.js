@@ -235,6 +235,35 @@ const bosses = [
     { id: "diababa", name: "Diababa (Forest Temple)", start: alive("forestBoss"), exitStage: "F_SP108", crystal: 0 },
     { id: "fyrus", name: "Fyrus (Goron Mines)", start: alive("goronMinesBoss"), exitStage: "F_SP109", crystal: 1 },
 ];
+function sharedBossScenario(boss, killer) {
+    return {
+        name: `boss-${boss.id}-shared-${killer.toLowerCase()}`,
+        description: `${killer} defeats ${boss.name}; both arenas run the native clear and create a heart and warp`,
+        tags: ["boss-fight"],
+        timeoutSec: 600,
+        cvars: COMMON_CVARS,
+        instances: ["A", "B"].map((name) => ({
+            name,
+            start: boss.start,
+            steps: [
+                ...connect,
+                at(boss.start.stage),
+                { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 120 },
+                ...(name === "A" ? [{ op: "setRoomOption", name: "syncNPCs" }] : []),
+                { op: "waitRoomOption", name: "syncNPCs", timeoutSec: 30 },
+                ...fightStart,
+                ...(boss.id === "diababa" ? [{ op: "prepareDiababaCore" }] : []),
+                ...barrier("fighting", name === "A" ? "B" : "A", 300),
+                ...(name === killer ? [{ op: "killBoss", how: "real" }] : []),
+                { op: "expectBossClear", heart: 1, warp: 1, timeoutSec: 300 },
+                { op: "expectDungeonBit", bit: BOSS_BIT },
+                ...barrier("cleared", name === "A" ? "B" : "A", 300),
+                { op: "quit" },
+            ],
+        })),
+    };
+}
+
 const miniBosses = [
     {
         id: "dangoro",
@@ -247,6 +276,7 @@ const miniBosses = [
 
 module.exports = [
     ...bosses.map(bossScenario),
+    ...bosses.flatMap((boss) => ["A", "B"].map((killer) => sharedBossScenario(boss, killer))),
     ...miniBosses.map((m) => miniBossScenario(m, false)),
     ...bosses.map(observeScenario),
     ...miniBosses.map((m) => miniBossScenario(m, true)),

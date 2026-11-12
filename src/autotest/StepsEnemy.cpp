@@ -15,6 +15,7 @@
 #include "m_Do/m_Do_ext.h"  // the enemy headers are not self-contained
 
 #include "SSystem/SComponent/c_malloc.h"
+#include "d/actor/d_a_e_fz.h"
 #include "d/actor/d_a_e_hz.h"
 #include "d/actor/d_a_e_mm.h"
 #include "d/actor/d_a_e_oc.h"
@@ -203,6 +204,17 @@ std::optional<bool> killEnemy(StepContext& ctx) {
         if (ctx.step.value("onActor", false)) {
             fopAcM_onActor(ac);
         }
+        return true;
+    }
+    if (how == "freezard") {
+        if (fopAcM_GetName(ac) != fpcNm_E_FZ_e) {
+            ctx.fail("killEnemy freezard: '" + tag + "' is not a Mini Freezard");
+            return false;
+        }
+        ac->health = 0;
+        auto* freezard = static_cast<daE_FZ_c*>(ac);
+        freezard->mActionMode = ACT_DAMAGE;
+        freezard->mActionPhase = 0;
         return true;
     }
     if (how == "hz" || how == "hzReal") {

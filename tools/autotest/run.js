@@ -3,6 +3,7 @@
 
 const { spawn, execFileSync } = require("node:child_process");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const zlib = require("node:zlib");
 const scenarios = require("./scenarios");
@@ -12,7 +13,10 @@ const REPO = path.resolve(__dirname, "..", "..", "..", "..");
 const SERVER_JS = path.resolve(__dirname, "..", "server", "server.js");
 let WORK_DIR = path.join(__dirname, "work");
 let OUT_DIR = path.join(__dirname, "out");
-const USER_DATA_DIR = path.join(process.env.APPDATA ?? "", "TwilitRealm", "Dusklight");
+const IS_WINDOWS = process.platform === "win32";
+const dataRoot = IS_WINDOWS ? process.env.APPDATA ?? "" :
+    process.env.XDG_DATA_HOME ?? path.join(os.homedir(), ".local", "share");
+const USER_DATA_DIR = path.join(dataRoot, "TwilitRealm", "Dusklight");
 
 const TEST_CONFIG = {
     "game.autoSave": false,
@@ -144,7 +148,8 @@ function listExeMods(exe) {
 
 // The SDL preference path under the slot's redirected home.
 const slotHome = (dir) => path.join(dir, "home");
-const slotCacheDir = (dir) => path.join(slotHome(dir), "AppData", "Roaming", "TwilitRealm", "Dusklight");
+const slotDataRoot = (dir) => path.join(slotHome(dir), ...(IS_WINDOWS ? ["AppData", "Roaming"] : [".local", "share"]));
+const slotCacheDir = (dir) => path.join(slotDataRoot(dir), "TwilitRealm", "Dusklight");
 
 function prepareSlot(index, modIds, enableMods) {
     const dir = path.join(WORK_DIR, `slot${index}`);
@@ -240,6 +245,10 @@ async function watchServerRestart(scenario, server) {
 
 function killTree(pid) {
     try {
+        if (!IS_WINDOWS) {
+            process.kill(pid, "SIGKILL");
+            return;
+        }
         execFileSync("taskkill", ["/PID", String(pid), "/T", "/F"], { stdio: "ignore" });
     } catch {
     }
@@ -247,6 +256,7 @@ function killTree(pid) {
 
 // Cosmetic; never activates the window.
 function placeWindow(pid, index) {
+    if (!IS_WINDOWS) return;
     const x = 20 + index * 820;
     const ps = [
         "$sig = '[DllImport(\"user32.dll\")] public static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int cx, int cy, uint f);'",
@@ -369,6 +379,9 @@ async function runScenario(scenario, opts, outRoot) {
             ...process.env,
             USERPROFILE: home,
             APPDATA: path.join(home, "AppData", "Roaming"),
+            XDG_DATA_HOME: slotDataRoot(dataDir),
+            XDG_CACHE_HOME: path.join(home, ".cache"),
+            XDG_CONFIG_HOME: path.join(home, ".config"),
             LOCALAPPDATA: path.join(home, "AppData", "Local"),
         };
         // A crash after the log closed only shows in stderr.
@@ -381,7 +394,7 @@ async function runScenario(scenario, opts, outRoot) {
             stopAt: scripted ? null : Date.now() + (inst.runSec ?? 30) * 1000,
             killedForCrash: false, killedForTimeout: false, killedAfterResult: false, stoppedAsPlanned: false,
         };
-        proc.on("exit", (code) => (entry.exitCode = code));
+        proc.on("exit", (code) => (entry.exitCode = code ?? 1));
         procs.push(entry);
         placeWindow(proc.pid, index);
         console.log(`    launched ${inst.name} (pid ${proc.pid}, data ${dataDir})`);

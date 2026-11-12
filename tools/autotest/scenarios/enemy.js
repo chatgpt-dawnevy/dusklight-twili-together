@@ -6,7 +6,7 @@ const { STAGES, COMMON_CVARS, tt, waitStage, barrier, connect } = require("../li
 const BOKOBLIN = { name: "E_oc", param: 0xffffff00, dy: 30 };
 // Tektite, not on the health-scaling allowlist: keeps its 80 whatever the room sets.
 const TEKTITE = { name: "E_tt", param: 0xffffffff, dy: 30 };
-// Mini Freezard, neither kill-synced (its death has no puff and no mark) nor duplicated.
+// Mini Freezard, with a native death that has no puff. It is never duplicated.
 const FREEZARD = { name: "E_fz", param: 0xffffffff, dy: 30 };
 // Tile Worm with defeated switch 0x13 (its low param byte).
 const TILE_WORM = { name: "E_hz", param: 0xffffff13, dy: 0 };
@@ -57,7 +57,7 @@ const barrierAll = (name, others, timeoutSec = 120) => [
     ...others.map((from) => ({ op: "waitSignal", name, from, timeoutSec })),
 ];
 
-// enemy-kill-sync: one of each way to die, plus a plain delete and an enemy off the allowlist.
+// enemy-kill-sync: one of each way to die, plus a plain delete and a Mini Freezard without a native death.
 const KILL_SYNC_ENEMIES = [
     ["real", BOKOBLIN, 0, 250],
     ["za", BOKOBLIN, 250, 250, { setId: 0x20 }],
@@ -248,6 +248,20 @@ module.exports = [
             },
         ],
     },
+    pair("enemy-freezard-native-death",
+        "each teammate defeats a Mini Freezard using its native death; both copies disappear",
+        (isA, other) => [
+            ...syncOn(isA),
+            ...spawnAndSettle([["first", FREEZARD, -200, 250], ["second", FREEZARD, 200, 250]]),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...barrier("spawned", other),
+            ...(isA ? [{ op: "killEnemy", tag: "first", how: "freezard" }] : []),
+            { op: "expectEnemyGone", tag: "first" },
+            ...barrier("first-gone", other),
+            ...(!isA ? [{ op: "killEnemy", tag: "second", how: "freezard" }] : []),
+            { op: "expectEnemyGone", tag: "second" },
+            { op: "expectEnemySync", sent: 1, received: 1, applied: 1 },
+        ]),
     pair("enemy-one-hit-and-shadow-insect",
         "a rat, a Bombskit and a Shadow Insect defeated by A disappear for B; B gets the insect switch",
         (isA, other) => [
@@ -257,6 +271,7 @@ module.exports = [
             health("rat", 1),
             health("bombskit", 1),
             { op: "expectSwitch", no: 0x19, room: 0, set: false, timeoutSec: 0 },
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
             ...barrier("spawned", other),
             ...(isA ? ["rat", "bombskit", "insect"].map((tag) => ({ op: "killEnemy", tag })) : []),
             ...["rat", "bombskit", "insect"].map((tag) => ({ op: "expectEnemyGone", tag })),

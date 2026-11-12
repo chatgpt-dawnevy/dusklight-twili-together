@@ -420,6 +420,28 @@ std::optional<bool> bossSteps(const std::string& op, StepContext& ctx) {
         return false;
     }
 
+    if (op == "prepareDiababaCore") {
+        // Enter the native body emergence after the intro, as the first phase would.
+        auto* actor = liveBoss();
+        if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_B_BQ_e) {
+            ctx.fail("prepareDiababaCore: no Diababa in the arena");
+            return false;
+        }
+        auto* diababa = static_cast<b_bq_class*>(actor);
+        if (diababa->mDemoMode == 0 && !dComIfGp_event_runCheck()) {
+            if (diababa->mAction != 0) {
+                return true;
+            }
+            if (diababa->mMode == 1) {
+                diababa->mMode = 2;
+            }
+        }
+        if (ctx.seconds > ctx.timeout(60.0)) {
+            ctx.fail("prepareDiababaCore: Diababa did not emerge");
+        }
+        return false;
+    }
+
     if (op == "expectBossFight") {
         if (boss::fighting() == step.value("value", true)) {
             return true;

@@ -28,7 +28,10 @@ node tools/autotest/run.js smoke --exe <copy>/dusklight.exe --work <dir>
 ```
 
 Needs a GPU (there is no headless mode) and a user config with a valid disc image path: each run
-takes it from `%APPDATA%/TwilitRealm/Dusklight/config.json`. Instances open 800x480 windows in a
+takes it from `%APPDATA%/TwilitRealm/Dusklight/config.json` on Windows or
+`${XDG_DATA_HOME:-~/.local/share}/TwilitRealm/Dusklight/config.json` on Linux. On Linux, pass
+the Dusklight executable with `--exe` and put Twili-Together in its adjacent `mods/` directory.
+Instances open 800x480 windows in a
 row, muted. Don't minimize them: a minimized window skips frames.
 
 Exit code is 0 when every scenario passed. Output goes to `out/<timestamp>/<scenario>/`:
@@ -61,7 +64,8 @@ connected. Check that by hand after changes to startup, shutdown or the actors.
 Every instance runs with `--user-dir work/slot<N>` (config, memory card, achievements, mod data
 and the mod cache) and `--log-dir work/slot<N>/logs`. The game's cache directory (pipeline caches,
 and the logs without `--log-dir`) is the SDL preference path, which `--user-dir` does not move, so
-the runner also points `USERPROFILE`, `APPDATA` and `LOCALAPPDATA` at `work/slot<N>/home`. A run
+the runner also points `USERPROFILE`, `APPDATA` and `LOCALAPPDATA` at `work/slot<N>/home` on Windows and redirects
+the XDG data, cache and config directories on Linux. A run
 therefore never writes the player's real game data.
 
 Before each scenario the runner rebuilds the slot's `config.json`: from the user's config only the

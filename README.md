@@ -109,7 +109,7 @@ the others see the owner's values, greyed out.
 | --- | --- | --- |
 | Sync World State | on | teams share flags, items, keys and save progress; outside randomizer games an item the game takes away (the lantern the monkey steals, the Wooden Sword Talo takes, a trade item handed over) leaves every teammate too, shields never |
 | Share Wooden Shields | on | off: a burnt wooden shield stays burnt for everyone who lost it |
-| Sync Enemy Deaths | off | nearby supported enemies defeated by a teammate disappear for you too. Fyrus, Deku Toad and Twilit Bloat run their own defeat sequences on each client |
+| Sync Enemy Deaths | off | nearby supported enemies defeated by a teammate disappear for you too. Diababa, Fyrus, Deku Toad and Twilit Bloat run their own defeat sequences on each client |
 | Share Enemy Damage | on | with Sync Enemy Deaths: your hits weaken supported enemies on your teammates’ clients, including Deku Toad and Argorok |
 | Sync Blocks and Chains | on | with Sync World State: a block a teammate in your area pushes or pulls, a turning switch or push door they turn, or a chain switch they pull, moves for you too and stops on the same spot; only their game flips the switch |
 | Cutscene Sync | on | teammates standing safely in the same room watch a story cutscene together; never a boss scene |
