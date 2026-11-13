@@ -274,7 +274,37 @@ const miniBosses = [
     },
 ];
 
+const fyrusPhase = {
+    name: "boss-fyrus-shared-knockdown",
+    description: "A knocks Fyrus down; B enters the native vulnerable phase",
+    tags: ["boss-fight"],
+    timeoutSec: 600,
+    cvars: COMMON_CVARS,
+    instances: ["A", "B"].map((name) => ({
+        name,
+        start: bosses[1].start,
+        steps: [
+            ...connect,
+            at(bosses[1].start.stage),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 120 },
+            ...(name === "A" ? [
+                { op: "setRoomOption", name: "syncNPCs" },
+                { op: "setRoomOption", name: "syncEnemyCombat" },
+            ] : []),
+            { op: "waitRoomOption", name: "syncNPCs", timeoutSec: 30 },
+            { op: "waitRoomOption", name: "syncEnemyCombat", timeoutSec: 30 },
+            ...fightStart,
+            ...barrier("fyrus-ready", name === "A" ? "B" : "A", 300),
+            ...(name === "A" ? [{ op: "startFyrusKnockdown" }] : []),
+            { op: "expectFyrusVulnerable", timeoutSec: 90 },
+            ...barrier("fyrus-vulnerable", name === "A" ? "B" : "A", 120),
+            { op: "quit" },
+        ],
+    })),
+};
+
 module.exports = [
+    fyrusPhase,
     ...bosses.map(bossScenario),
     ...bosses.flatMap((boss) => ["A", "B"].map((killer) => sharedBossScenario(boss, killer))),
     ...miniBosses.map((m) => miniBossScenario(m, false)),

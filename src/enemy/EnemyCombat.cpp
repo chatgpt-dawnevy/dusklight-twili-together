@@ -6,6 +6,8 @@
 #include "sync/WorldSync.hpp"
 
 #include "m_Do/m_Do_ext.h"
+#include "d/d_kankyo.h"
+#include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_oc.h"
 #include "d/actor/d_a_player.h"
 #include "d/d_com_inf_game.h"
@@ -32,6 +34,7 @@ constexpr int kVersion = 1;
 constexpr size_t kBatchSize = 16;
 constexpr size_t kMaxSnapshots = 128;
 constexpr auto kInterval = std::chrono::milliseconds(100);
+constexpr int kFyrusDown = 9;
 constexpr auto kTimeout = std::chrono::milliseconds(750);
 
 struct Snapshot {
@@ -46,6 +49,7 @@ struct Snapshot {
     float rate = 0;
     bool attacking = false;
     Clock::time_point at{};
+    int knockdowns = 0;
 };
 
 std::unordered_map<fpc_ProcID, Snapshot> s_local;
@@ -120,8 +124,14 @@ bool number(const Json& j, const char* field, float lo, float hi, float& out) {
 bool parse(const Json& j, Snapshot& s) {
     using enemy_sync::detail::intField;
     int64_t yaw, action, phase, animation, playMode;
-    if (!enemy_sync::detail::parseKey(j, s.key) || s.key.procName != fpcNm_E_OC_e ||
-        s.key.roomNo != s_room || !intField(j, "yaw", -32768, 32767, yaw) ||
+    if (!enemy_sync::detail::parseKey(j, s.key) || s.key.roomNo != s_room) return false;
+    if (s.key.procName == fpcNm_E_FM_e) {
+        int64_t knockdowns;
+        if (!intField(j, "knockdowns", 1, 127, knockdowns)) return false;
+        s.knockdowns = static_cast<int>(knockdowns);
+        return true;
+    }
+    if (s.key.procName != fpcNm_E_OC_e || !intField(j, "yaw", -32768, 32767, yaw) ||
         !intField(j, "action", 0, 16, action) || !supportedAction(static_cast<int>(action)) ||
         !intField(j, "phase", 0, 64, phase) || !intField(j, "animation", 3, 30, animation) ||
         !intField(j, "playMode", 0, 4, playMode) ||
@@ -192,10 +202,14 @@ void tick() {
     for (const auto& [id, state] : s_local) {
         if (now - state.at >= kTimeout || enemy_sync::isDying(id)) continue;
         Json item = enemy_sync::detail::keyJson(state.key);
-        item.update(Json{{"x", state.position.x}, {"y", state.position.y}, {"z", state.position.z},
+        if (state.key.procName == fpcNm_E_FM_e) {
+            item["knockdowns"] = state.knockdowns;
+        } else {
+            item.update(Json{{"x", state.position.x}, {"y", state.position.y}, {"z", state.position.z},
                          {"yaw", state.yaw}, {"action", state.action}, {"phase", state.phase},
                          {"animation", state.animation}, {"playMode", state.playMode}, {"frame", state.frame},
                          {"rate", state.rate}, {"attacking", state.attacking}});
+        }
         states.push_back(std::move(item));
         if (states.size() == kBatchSize) sendBatch(session, states);
     }
@@ -243,6 +257,52 @@ void capture(daE_OC_c& actor) {
             actor.mActionMode, actor.mOcState, animation, actor.mpMorf->getPlayMode(),
             actor.mpMorf->getFrame(), actor.mpMorf->getPlaySpeed(), attack, Clock::now()};
         return;
+    }
+}
+
+void updateFyrus(e_fm_class& actor) {
+    const auto id = fopAcM_GetID(&actor);
+    const auto* key = enemy_sync::trackedKey(id);
+    if (key == nullptr || s_authority == 0 ||
+        !s_location.matches(enemy_sync::detail::currentLocation()) ||
+        key->roomNo != s_room || dStage_roomControl_c::getStayNo() != s_room ||
+        dComIfGp_isEnableNextStage() || enemy_sync::isDying(id))
+    {
+        return;
+    }
+    if (s_authority == Session::instance().selfClientId()) {
+        if (actor.mAction == kFyrusDown && actor.mDownCnt > 0) {
+            Snapshot snapshot;
+            snapshot.key = *key;
+            snapshot.knockdowns = actor.mDownCnt;
+            snapshot.at = Clock::now();
+            s_local[id] = snapshot;
+        }
+        return;
+    }
+
+    // Do not interrupt an intro, camera sequence, or a player holding either chain.
+    if (actor.mAction < 0 || actor.mAction > kFyrusDown || actor.mDemoCamMode != 0 ||
+        dComIfGp_event_runCheck() || actor.mChain[2].field_0x617c || actor.mChain[3].field_0x617c)
+    {
+        return;
+    }
+    const auto snapshot = std::find_if(s_remote.begin(), s_remote.end(),
+        [&](const Snapshot& state) { return enemy_sync::sameKey(state.key, *key); });
+    if (snapshot == s_remote.end() || snapshot->knockdowns <= actor.mDownCnt ||
+        Clock::now() - snapshot->at >= kTimeout)
+    {
+        return;
+    }
+
+    actor.mDownCnt = static_cast<s8>(snapshot->knockdowns);
+    if (actor.mAction != kFyrusDown) {
+        // The native down action initializes the animation and vulnerable period.
+        actor.health = 50;
+        actor.mAction = kFyrusDown;
+        actor.mMode = 0;
+        // A remotely started knockdown does not own the local camera.
+        actor.field_0x1b078 = 1;
     }
 }
 

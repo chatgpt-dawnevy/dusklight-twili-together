@@ -420,6 +420,31 @@ std::optional<bool> bossSteps(const std::string& op, StepContext& ctx) {
         return false;
     }
 
+    if (op == "startFyrusKnockdown" || op == "expectFyrusVulnerable") {
+        auto* actor = liveBoss();
+        if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_E_FM_e) {
+            ctx.fail("Fyrus phase: no live Fyrus");
+            return false;
+        }
+        auto* fyrus = static_cast<e_fm_class*>(actor);
+        constexpr int downAction = 9;
+        if (op == "startFyrusKnockdown") {
+            fyrus->mDownCnt++;
+            fyrus->health = 50;
+            fyrus->mAction = downAction;
+            fyrus->mMode = 0;
+            fyrus->field_0x1b078 = 1;
+            return true;
+        }
+        if (fyrus->mAction == downAction && fyrus->mMode == 2 && fyrus->mDownCnt == 1) {
+            return true;
+        }
+        if (ctx.seconds > ctx.timeout(30.0)) {
+            ctx.fail("Fyrus did not enter the native vulnerable phase");
+        }
+        return false;
+    }
+
     if (op == "prepareDiababaCore") {
         // Enter the native body emergence after the intro, as the first phase would.
         auto* actor = liveBoss();

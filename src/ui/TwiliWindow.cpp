@@ -371,8 +371,8 @@ const RoomBool kSyncOptions[] = {
         "lands the last blow gets the drop. Enemies go down faster with more players; consider "
         "raising Enemy Health. Needs Sync Enemy Deaths.</p>",
         Var::SyncEnemyDeaths},
-    {Var::SyncEnemyCombat, &RoomState::syncEnemyCombat, "Sync Bokoblin Combat",
-        "<p>Shares movement and combat actions of supported Bokoblins in the same room. "
+    {Var::SyncEnemyCombat, &RoomState::syncEnemyCombat, "Sync Enemy Combat",
+        "<p>Shares Bokoblin movement and attacks and Fyrus knockdowns with teammates in the same room. "
         "Needs Sync Enemy Deaths and an updated relay.</p>", Var::SyncEnemyDeaths},
     {Var::CutsceneSync, &RoomState::cutsceneSync, "Cutscene Sync",
         "<p>When a story cutscene starts for a teammate, players in the same room who are "
