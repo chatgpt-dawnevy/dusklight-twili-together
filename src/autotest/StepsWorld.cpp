@@ -28,6 +28,7 @@ constexpr RoomOption kRoomOptions[] = {
     {"sharePickups", Var::SharePickups, &RoomState::sharePickups},
     {"teleportMode", Var::TeleportMode, &RoomState::teleportMode},
     {"syncNPCs", Var::SyncEnemyDeaths, &RoomState::syncNPCs},
+    {"syncEnemyCombat", Var::SyncEnemyCombat, &RoomState::syncEnemyCombat},
     {"syncEnemyDamage", Var::SyncEnemyDamage, &RoomState::syncEnemyDamage},
     {"pvpMode", Var::PvpMode, &RoomState::pvpMode},
     {"pvpFriendlyFire", Var::PvpFriendlyFire, &RoomState::pvpFriendlyFire},

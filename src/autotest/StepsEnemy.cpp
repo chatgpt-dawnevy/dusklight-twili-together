@@ -568,6 +568,31 @@ std::optional<bool> enemySteps(const std::string& op, StepContext& ctx) {
         return false;
     }
 
+    if (op == "startBokoblinAttack" || op == "expectBokoblinAttack") {
+        auto* actor = runningActor(taggedId(ctx.step));
+        if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_E_OC_e) {
+            ctx.fail("Bokoblin combat: tagged actor is unavailable");
+            return false;
+        }
+        auto& bokoblin = *static_cast<daE_OC_c*>(actor);
+        if (op == "startBokoblinAttack") {
+            bokoblin.current.pos.x = bokoblin.home.pos.x + 120.0f;
+            bokoblin.current.angle.y = bokoblin.shape_angle.y = 0x3000;
+            bokoblin.setActionMode(4, 2);
+            bokoblin.setBck(6, 0, 0.0f, 1.0f);
+            bokoblin.mpMorf->setFrameF(13.0f);
+            return true;
+        }
+        const bool attacking = bokoblin.mActionMode == 4 && bokoblin.mOcState == 2 &&
+            bokoblin.checkBck(6) && bokoblin.mSphs_at[0].ChkAtSet();
+        const bool moved = std::abs(bokoblin.current.pos.x - bokoblin.home.pos.x) > 60.0f;
+        if (attacking && moved && bokoblin.shape_angle.y == 0x3000) return true;
+        if (ctx.seconds > ctx.timeout(15.0)) {
+            ctx.fail("Bokoblin combat: remote position, facing and active swing did not converge");
+        }
+        return false;
+    }
+
     if (op == "expectEnemyHealth") {
         return expectEnemyHealth(ctx);
     }

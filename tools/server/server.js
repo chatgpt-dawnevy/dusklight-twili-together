@@ -215,6 +215,7 @@ function defaultRoomState() {
         sharePickups: true,
         syncNPCs: false,
         syncEnemyDamage: true,
+        syncEnemyCombat: false,
         cutsceneSync: true,
         syncPushPull: true,
         enemyHealthMultiplier: 100,
@@ -1141,6 +1142,27 @@ function handlePacket(client, packet) {
         TEAM_PACKET_TYPES.has(packet.type) || TEAM_LIVE_PACKET_TYPES.has(packet.type);
     if (teamTraffic && !syncOk(room, client)) {
         dropUnsynced(room, client, packet.type);
+        return;
+    }
+
+    if (packet.type === "ENEMY_COMBAT") {
+        if (!room.state.syncNPCs || !room.state.syncEnemyCombat || !client.online ||
+            !client.isSaveLoaded || !syncOk(room, client) || client.roomNo < 0 ||
+            packet.stageName !== client.stageName || packet.layerNo !== client.layerNo ||
+            packet.roomNo !== client.roomNo || packet.v !== 1 ||
+            !Array.isArray(packet.states) || packet.states.length < 1 || packet.states.length > 16) return;
+
+        const peers = [...room.clients.values()].filter((peer) =>
+            peer.online && peer.isSaveLoaded && peer.teamId === client.teamId &&
+            peer.stageName === client.stageName && peer.layerNo === client.layerNo &&
+            peer.roomNo === client.roomNo && peer.protocolVersion === client.protocolVersion && syncOk(room, peer));
+        if (peers.some((peer) => peer.clientId < client.clientId)) return;
+        const combat = { type: packet.type, v: 1, clientId: client.clientId, teamId: client.teamId,
+            senderSessionKey: client.sessionKey, protocolVersion: client.protocolVersion, addToQueue: false,
+            stageName: client.stageName, layerNo: client.layerNo, roomNo: client.roomNo, states: packet.states };
+        for (const peer of peers) {
+            if (peer !== client) send(peer, combat);
+        }
         return;
     }
 

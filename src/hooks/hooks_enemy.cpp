@@ -1,6 +1,7 @@
 #include "hooks/Hooks.hpp"
 
 #include "core/Session.hpp"
+#include "enemy/EnemyCombat.hpp"
 #include "enemy/EnemyCount.hpp"
 #include "enemy/EnemyDamage.hpp"
 #include "enemy/EnemyScaling.hpp"
@@ -26,6 +27,7 @@ DEFINE_HOOK(static_cast<s32 (*)(fopAc_ac_c*)>(&fopAcM_delete), ActorDeleteReques
 DEFINE_HOOK(static_cast<s32 (*)(fpc_ProcID)>(&fopAcM_delete), ActorDeleteRequestId);
 DEFINE_HOOK(&fopAcM_createDisappear, ActorCreateDisappear);
 DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_bs.cpp#damage_check", void(e_bs_class*), EbsDamageCheck);
+DEFINE_HOOK(&daE_OC_c::execute, EocExecute);
 DEFINE_HOOK(&daE_OC_c::executeFallDead, EocExecuteFallDead);
 DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_s1.cpp#all_fail", void(e_s1_class*), Es1AllFail);
 DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_s1.cpp#e_s1_shout", void(e_s1_class*), Es1Shout);
@@ -59,6 +61,7 @@ void onActorDeletePost(ModContext*, void* args, void* retval, void*) {
     }
     auto* actor = static_cast<fopAc_ac_c*>(mods::arg<void*>(args, 0));
     enemy_scaling::onActorDeleted(actor);
+    enemy_combat::onActorDeleted(actor);
     enemy_sync::onActorDeleted(actor);
     enemy_damage::onActorDeleted(actor);
     enemy_count::onActorDeleted(actor);
@@ -202,8 +205,23 @@ ModResult installEnemyDamage(std::string& error) {
     return MOD_OK;
 }
 
+HookAction onEocExecutePre(ModContext*, void* args, void* retval, void*) {
+    auto* actor = mods::arg<daE_OC_c*>(args, 0);
+    if (Session::active() && enemy_combat::executeReplica(*actor)) {
+        *static_cast<int*>(retval) = 1;
+        return HOOK_SKIP_ORIGINAL;
+    }
+    return HOOK_CONTINUE;
+}
+
+void onEocExecutePost(ModContext*, void* args, void*, void*) {
+    if (Session::active()) enemy_combat::capture(*mods::arg<daE_OC_c*>(args, 0));
+}
+
 ModResult installEnemy(std::string& error) {
     const ModResult results[] = {
+        addPre<EocExecute>(onEocExecutePre, kDefault, "daE_OC_c::execute", error),
+        addPost<EocExecute>(onEocExecutePost, kDefault, "daE_OC_c::execute", error),
         addPost<ActorCreate>(onActorCreatePost, kDefault, "fopAc_Create", error),
         addPost<ActorDelete>(onActorDeletePost, kDefault, "fopAc_Delete", error),
         addPre<ActorDeleteRequest>(onDeleteRequestPre, kObserve, "fopAcM_delete", error),

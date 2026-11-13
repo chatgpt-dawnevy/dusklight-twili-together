@@ -248,6 +248,24 @@ module.exports = [
             },
         ],
     },
+    pair("enemy-bokoblin-combat",
+        "B receives A's movement, facing, attack animation, phase and active hitbox",
+        (isA, other) => [
+            ...syncOn(isA),
+            ...(isA ? [{ op: "setRoomOption", name: "syncEnemyCombat" }] : []),
+            { op: "waitRoomOption", name: "syncEnemyCombat", timeoutSec: 30 },
+            ...spawnAndSettle([["boko", BOKOBLIN, 0, 250]]),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...barrier("combat-ready", other),
+            ...(isA ? [
+                { op: "wait", frames: 10 },
+                { op: "startBokoblinAttack", tag: "boko" },
+                { op: "waitSignal", name: "swing-seen", from: other },
+            ] : [
+                { op: "expectBokoblinAttack", tag: "boko" },
+                { op: "signal", name: "swing-seen" },
+            ]),
+        ]),
     pair("enemy-freezard-native-death",
         "each teammate shares a hit and a native Mini Freezard defeat",
         (isA, other) => [

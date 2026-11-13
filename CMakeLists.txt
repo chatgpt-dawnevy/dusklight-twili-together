@@ -54,6 +54,7 @@ set(TWILI_SOURCES
     src/core/SaveGate.cpp
     src/core/Session.cpp
     src/core/Visibility.cpp
+    src/enemy/EnemyCombat.cpp
     src/enemy/EnemyCount.cpp
     src/enemy/EnemyDamage.cpp
     src/enemy/EnemyDamagePacket.cpp

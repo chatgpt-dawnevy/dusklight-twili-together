@@ -404,6 +404,71 @@ test("ENEMY_DAMAGE reaches only teammates in the sender's stage and layer, stamp
     }
 }));
 
+test("ENEMY_COMBAT scopes snapshots to the elected teammate in the same room", () => withServer(async (mk) => {
+    const a = mk();
+    const b = mk();
+    const otherRoom = mk();
+    const otherLayer = mk();
+    const otherTeam = mk();
+    const otherStage = mk();
+    const noSave = mk();
+    await a.join({ teamId: "red", sessionKey: "combat-a" });
+    await b.join({ teamId: "red" });
+    await otherRoom.join({ teamId: "red" });
+    await otherLayer.join({ teamId: "red" });
+    await otherTeam.join({ teamId: "blue" });
+    await otherStage.join({ teamId: "red" });
+    await noSave.join({ teamId: "red" });
+    for (const peer of [a, b, otherTeam]) peer.enterStage("F_SP108", 0);
+    otherRoom.enterStage("F_SP108", 0, { roomNo: 1 });
+    otherLayer.enterStage("F_SP108", 1);
+    otherStage.enterStage("F_SP103", 0);
+    noSave.enterStage("F_SP108", 0, { isSaveLoaded: false });
+    await settle();
+
+    const states = [{ procName: 485, roomNo: 0, params: 0xffffff00, setId: 0xffff, dup: 0,
+        home: { x: 1, y: 2, z: 3 }, x: 8, y: 2, z: 5, yaw: 32767,
+        action: 4, phase: 2, animation: 6, playMode: 0, frame: 16, rate: 1, attacking: true }];
+    const packet = { type: "ENEMY_COMBAT", v: 1, quiet: true, stageName: "F_SP108", layerNo: 0, roomNo: 0, states };
+    const isCombat = (p) => p.type === "ENEMY_COMBAT";
+    a.send(packet);
+    await b.expectNone(isCombat, "combat sync disabled by default");
+
+    a.send({ type: "UPDATE_ROOM_STATE", state: { syncNPCs: true, syncEnemyCombat: true } });
+    assert.equal((await b.waitType("UPDATE_ROOM_STATE")).state.syncEnemyCombat, true);
+    a.send({ ...packet, roomNo: 1 });
+    a.send({ ...packet, v: 2 });
+    a.send({ ...packet, states: Array(17).fill(states[0]) });
+    b.send({ ...packet, clientId: a.id });
+    await Promise.all([b.expectNone(isCombat, "invalid snapshots"), a.expectNone(isCombat, "non-authority")]);
+
+    a.send({ ...packet, clientId: b.id, teamId: "blue", addToQueue: true });
+    assert.deepEqual(await b.waitType("ENEMY_COMBAT"), {
+        type: "ENEMY_COMBAT", v: 1, clientId: a.id, teamId: "red", senderSessionKey: "combat-a",
+        protocolVersion: 5, addToQueue: false, stageName: "F_SP108", layerNo: 0, roomNo: 0, states,
+    });
+    await Promise.all([otherRoom, otherLayer, otherTeam, otherStage, noSave].map((peer) =>
+        peer.expectNone(isCombat, "snapshot leaked outside the encounter")));
+
+    const late = mk();
+    await late.join({ teamId: "red" });
+    late.enterStage("F_SP108", 0);
+    late.send({ type: "REQUEST_WORLD_STATE", catchUp: true });
+    await late.expectNone(isCombat, "snapshot replayed to a late joiner");
+
+    a.send({ type: "UPDATE_ROOM_STATE", state: { syncNPCs: false } });
+    assert.equal((await b.waitType("UPDATE_ROOM_STATE")).state.syncNPCs, false);
+    a.send(packet);
+    await b.expectNone(isCombat, "combat sync requires enemy deaths");
+    a.send({ type: "UPDATE_ROOM_STATE", state: { syncNPCs: true } });
+    assert.equal((await b.waitType("UPDATE_ROOM_STATE")).state.syncNPCs, true);
+
+    a.enterStage("F_SP108", 0, { roomNo: 1 });
+    await settle();
+    b.send(packet);
+    assert.equal((await late.waitType("ENEMY_COMBAT")).clientId, b.id, "authority transfers on room exit");
+}));
+
 test("queued team packets are numbered by the server, live and in the replay", () => withServer(async (mk) => {
     const a = mk();
     const b = mk();

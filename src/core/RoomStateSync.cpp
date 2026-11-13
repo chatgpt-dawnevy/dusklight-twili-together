@@ -30,6 +30,7 @@ RoomState Session::roomStateFromSettings() const {
     state.sharePickups = config::getBool(Var::SharePickups);
     state.syncNPCs = config::getBool(Var::SyncEnemyDeaths);
     state.syncEnemyDamage = config::getBool(Var::SyncEnemyDamage);
+    state.syncEnemyCombat = config::getBool(Var::SyncEnemyCombat);
     state.cutsceneSync = config::getBool(Var::CutsceneSync);
     state.syncPushPull = config::getBool(Var::SyncPushPull);
     state.enemyHealthMultiplier = static_cast<int>(config::getInt(Var::EnemyHealthMultiplier));

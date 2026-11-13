@@ -24,6 +24,7 @@ struct RoomState {
     bool syncNPCs = false;
     // Needs syncNPCs ("Share Enemy Damage").
     bool syncEnemyDamage = true;
+    bool syncEnemyCombat = false;
     bool cutsceneSync = true;
     // Needs syncWorldState: teammates' block pushes and chain pulls play here too.
     bool syncPushPull = true;
@@ -37,7 +38,7 @@ struct RoomState {
                teleportMode == o.teleportMode && teleportAcrossTeams == o.teleportAcrossTeams &&
                syncWorldState == o.syncWorldState && shareWoodenShield == o.shareWoodenShield &&
                sharePickups == o.sharePickups && syncNPCs == o.syncNPCs && syncEnemyDamage == o.syncEnemyDamage &&
-               cutsceneSync == o.cutsceneSync && syncPushPull == o.syncPushPull &&
+               syncEnemyCombat == o.syncEnemyCombat && cutsceneSync == o.cutsceneSync && syncPushPull == o.syncPushPull &&
                enemyHealthMultiplier == o.enemyHealthMultiplier &&
                enemyCountMultiplier == o.enemyCountMultiplier;
     }
@@ -56,6 +57,7 @@ struct RoomState {
             {"sharePickups", sharePickups},
             {"syncNPCs", syncNPCs},
             {"syncEnemyDamage", syncEnemyDamage},
+            {"syncEnemyCombat", syncEnemyCombat},
             {"cutsceneSync", cutsceneSync},
             {"syncPushPull", syncPushPull},
             {"enemyHealthMultiplier", enemyHealthMultiplier},
@@ -78,6 +80,7 @@ struct RoomState {
         sharePickups = j.value("sharePickups", sharePickups);
         syncNPCs = j.value("syncNPCs", syncNPCs);
         syncEnemyDamage = j.value("syncEnemyDamage", syncEnemyDamage);
+        syncEnemyCombat = j.value("syncEnemyCombat", false);
         cutsceneSync = j.value("cutsceneSync", cutsceneSync);
         syncPushPull = j.value("syncPushPull", syncPushPull);
         enemyHealthMultiplier = j.value("enemyHealthMultiplier", enemyHealthMultiplier);
