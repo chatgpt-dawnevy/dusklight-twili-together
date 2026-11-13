@@ -8,6 +8,7 @@
 #include "m_Do/m_Do_ext.h"
 #include "d/d_kankyo.h"
 #include "d/actor/d_a_e_fm.h"
+#include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_oc.h"
 #include "d/actor/d_a_player.h"
 #include "d/d_com_inf_game.h"
@@ -35,7 +36,10 @@ constexpr size_t kBatchSize = 16;
 constexpr size_t kMaxSnapshots = 128;
 constexpr auto kInterval = std::chrono::milliseconds(100);
 constexpr int kFyrusDown = 9;
+constexpr int kToadBombDamage = 8;
+constexpr int kToadDeath = 9;
 constexpr auto kTimeout = std::chrono::milliseconds(750);
+constexpr auto kToadStunTimeout = std::chrono::seconds(8);
 
 struct Snapshot {
     SpawnKey key{};
@@ -50,6 +54,8 @@ struct Snapshot {
     bool attacking = false;
     Clock::time_point at{};
     int knockdowns = 0;
+    bool bombStun = false;
+    bool applied = false;
 };
 
 std::unordered_map<fpc_ProcID, Snapshot> s_local;
@@ -131,6 +137,12 @@ bool parse(const Json& j, Snapshot& s) {
         s.knockdowns = static_cast<int>(knockdowns);
         return true;
     }
+    if (s.key.procName == fpcNm_E_DT_e) {
+        const auto stun = j.find("bombStun");
+        if (stun == j.end() || !stun->is_boolean()) return false;
+        s.bombStun = stun->get<bool>();
+        return true;
+    }
     if (s.key.procName != fpcNm_E_OC_e || !intField(j, "yaw", -32768, 32767, yaw) ||
         !intField(j, "action", 0, 16, action) || !supportedAction(static_cast<int>(action)) ||
         !intField(j, "phase", 0, 64, phase) || !intField(j, "animation", 3, 30, animation) ||
@@ -191,7 +203,7 @@ void tick() {
         s_location = location;
     }
     const auto now = Clock::now();
-    std::erase_if(s_remote, [&](const Snapshot& s) { return now - s.at >= kTimeout; });
+    std::erase_if(s_remote, [&](const Snapshot& s) { return now - s.at >= (s.bombStun ? kToadStunTimeout : kTimeout); });
     if (owner == 0 || owner != session.selfClientId() || now - s_lastSend < kInterval ||
         !enemy_sync::detail::canSendHere(location.stage.data(), location.layer))
     {
@@ -204,6 +216,8 @@ void tick() {
         Json item = enemy_sync::detail::keyJson(state.key);
         if (state.key.procName == fpcNm_E_FM_e) {
             item["knockdowns"] = state.knockdowns;
+        } else if (state.key.procName == fpcNm_E_DT_e) {
+            item["bombStun"] = state.bombStun;
         } else {
             item.update(Json{{"x", state.position.x}, {"y", state.position.y}, {"z", state.position.z},
                          {"yaw", state.yaw}, {"action", state.action}, {"phase", state.phase},
@@ -237,6 +251,8 @@ bool handlePacket(const std::string& type, const Json& packet) {
         const auto existing = std::find_if(s_remote.begin(), s_remote.end(),
             [&](const Snapshot& s) { return enemy_sync::sameKey(s.key, state.key); });
         if (existing != s_remote.end()) {
+            if (!state.bombStun && existing->bombStun && !existing->applied) continue;
+            state.applied = state.bombStun && existing->applied;
             *existing = state;
         } else if (s_remote.size() < kMaxSnapshots) {
             s_remote.push_back(state);
@@ -257,6 +273,39 @@ void capture(daE_OC_c& actor) {
             actor.mActionMode, actor.mOcState, animation, actor.mpMorf->getPlayMode(),
             actor.mpMorf->getFrame(), actor.mpMorf->getPlaySpeed(), attack, Clock::now()};
         return;
+    }
+}
+
+void updateDekuToad(daE_DT_c& actor) {
+    const auto id = fopAcM_GetID(&actor);
+    const auto* key = enemy_sync::trackedKey(id);
+    if (key == nullptr || s_authority == 0 ||
+        !s_location.matches(enemy_sync::detail::currentLocation()) ||
+        key->roomNo != s_room || dStage_roomControl_c::getStayNo() != s_room ||
+        dComIfGp_isEnableNextStage() || enemy_sync::isDying(id) ||
+        actor.mAction < 0 || actor.mAction >= kToadDeath)
+    {
+        return;
+    }
+    if (s_authority == Session::instance().selfClientId()) {
+        Snapshot snapshot;
+        snapshot.key = *key;
+        snapshot.bombStun = actor.mAction == kToadBombDamage;
+        snapshot.at = Clock::now();
+        s_local[id] = snapshot;
+        return;
+    }
+    if (actor.mLinkPressed || dComIfGp_event_runCheck()) return;
+    const auto snapshot = std::find_if(s_remote.begin(), s_remote.end(),
+        [&](const Snapshot& state) { return enemy_sync::sameKey(state.key, *key); });
+    if (snapshot == s_remote.end() || !snapshot->bombStun || snapshot->applied ||
+        Clock::now() - snapshot->at >= kToadStunTimeout)
+    {
+        return;
+    }
+    snapshot->applied = true;
+    if (actor.mAction != kToadBombDamage) {
+        actor.setActionMode(kToadBombDamage, 0);
     }
 }
 

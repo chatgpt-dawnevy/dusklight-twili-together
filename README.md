@@ -111,7 +111,7 @@ the others see the owner's values, greyed out.
 | Share Wooden Shields | on | off: a burnt wooden shield stays burnt for everyone who lost it |
 | Sync Enemy Deaths | off | nearby supported enemies defeated by a teammate disappear for you too. Diababa, Fyrus, Deku Toad and Twilit Bloat run their own defeat sequences on each client |
 | Share Enemy Damage | on | with Sync Enemy Deaths: your hits weaken supported enemies on your teammates’ clients, including Deku Toad and Argorok |
-| Sync Enemy Combat | off | shares movement, facing, and combat actions for Bokoblins and knockdowns for Fyrus with teammates in the same room. Requires Sync Enemy Deaths and an updated relay |
+| Sync Enemy Combat | off | shares movement, facing, and combat actions for Bokoblins, knockdowns for Fyrus, and bomb stuns for Deku Toad with teammates in the same room. Requires Sync Enemy Deaths and an updated relay |
 | Sync Blocks and Chains | on | with Sync World State: a block a teammate in your area pushes or pulls, a turning switch or push door they turn, or a chain switch they pull, moves for you too and stops on the same spot; only their game flips the switch |
 | Cutscene Sync | on | teammates standing safely in the same room watch a story cutscene together; never a boss scene |
 | PvP Mode | off | players can hurt each other |

@@ -15,6 +15,7 @@
 #include "d/d_kankyo.h"
 #include "m_Do/m_Do_ext.h"
 
+#include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_b_bq.h"
 #include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_gob.h"
@@ -417,6 +418,33 @@ std::optional<bool> bossSteps(const std::string& op, StepContext& ctx) {
         if (ctx.seconds > ctx.timeout(120.0)) {
             ctx.fail(fmt::format("waitBossFight: fighting {} (want {}), quiet {}", boss::fighting(), want, quiet));
         }
+        return false;
+    }
+
+    if (op == "prepareToadCombat" || op == "startToadBombStun" || op == "expectToadBombStun") {
+        auto* actor = liveBoss();
+        if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_E_DT_e) {
+            ctx.fail("Deku Toad phase: no live Deku Toad");
+            return false;
+        }
+        auto& toad = *static_cast<daE_DT_c*>(actor);
+        constexpr int bombDamage = 8;
+        if (op == "prepareToadCombat") {
+            if (dComIfGp_event_runCheck()) return false;
+            // Skip the camera-driven introduction in this phase-only fixture.
+            if (toad.mAction == 10) {
+                toad.current.pos.set(0.0f, 0.0f, -500.0f);
+                toad.gravity = -5.0f;
+                toad.setActionMode(0, 0);
+            }
+            return true;
+        }
+        if (op == "startToadBombStun") {
+            toad.setActionMode(bombDamage, 0);
+            return true;
+        }
+        if (toad.mAction == bombDamage && toad.mMode == 1) return true;
+        if (ctx.seconds > ctx.timeout(30.0)) ctx.fail(fmt::format("Deku Toad did not start its bomb animation (action {} mode {})", toad.mAction, toad.mMode));
         return false;
     }
 

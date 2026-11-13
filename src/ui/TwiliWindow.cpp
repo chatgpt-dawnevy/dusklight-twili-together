@@ -372,7 +372,7 @@ const RoomBool kSyncOptions[] = {
         "raising Enemy Health. Needs Sync Enemy Deaths.</p>",
         Var::SyncEnemyDeaths},
     {Var::SyncEnemyCombat, &RoomState::syncEnemyCombat, "Sync Enemy Combat",
-        "<p>Shares Bokoblin movement and attacks and Fyrus knockdowns with teammates in the same room. "
+        "<p>Shares Bokoblin movement and attacks, Fyrus knockdowns, and Deku Toad bomb stuns. "
         "Needs Sync Enemy Deaths and an updated relay.</p>", Var::SyncEnemyDeaths},
     {Var::CutsceneSync, &RoomState::cutsceneSync, "Cutscene Sync",
         "<p>When a story cutscene starts for a teammate, players in the same room who are "

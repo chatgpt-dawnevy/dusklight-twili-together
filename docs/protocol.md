@@ -316,6 +316,6 @@ client without an automatic reconnect.
 `ENEMY_COMBAT` v1 sends up to 16 Bokoblin snapshots with the same spawn key fields as
 `ENEMY_DEFEATED`, plus position, yaw, action, phase, animation, playback mode, frame, rate,
 and attack state. Fyrus snapshots instead carry the cumulative knockdown count while
-he is in his native down action. The relay accepts snapshots from the lowest client ID on the same team
+he is in his native down action. Deku Toad snapshots carry the active bomb stun state. The relay accepts snapshots from the lowest client ID on the same team
 and game in the same stage, room, and layer. Snapshots are transient and never replayed.
 Requires both `syncNPCs` and `syncEnemyCombat`.
