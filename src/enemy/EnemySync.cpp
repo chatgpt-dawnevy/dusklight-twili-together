@@ -14,8 +14,10 @@
 #include "d/d_kankyo.h"  // LIGHT_INFLUENCE for d_a_e_fm.h
 
 #include "d/actor/d_a_b_bq.h"
+#include "d/actor/d_a_b_yo.h"
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_fm.h"
+#include "d/actor/d_a_e_gob.h"
 #include "d/actor/d_a_e_hz.h"
 #include "d/actor/d_a_e_s1.h"
 #include "d/actor/d_a_e_sb.h"
@@ -209,7 +211,45 @@ void deathSwordKill(fopAc_ac_c* ac) {
     sword.setActionMode(daE_VA_c::ACTION_OPACI_DEATH_e, 0);
 }
 
+// Dangoro becomes a friendly actor after his defeat scene. The lava demo
+// controls the platform and writes the dungeon's progression switch.
+bool dangoroIsDead(const fopAc_ac_c* ac) {
+    const auto& goron = *static_cast<const e_gob_class*>(ac);
+    return goron.mAction >= 10 || (goron.mDemoCamMode >= 10 && goron.mDemoCamMode <= 15);
+}
+
+bool dangoroReady(const fopAc_ac_c* ac) {
+    const auto& goron = *static_cast<const e_gob_class*>(ac);
+    return goron.mAction >= 2 && goron.mAction < 10 && goron.mDemoCamMode == 0;
+}
+
+void dangoroKill(fopAc_ac_c* ac) {
+    auto& goron = *static_cast<e_gob_class*>(ac);
+    goron.mAction = 10;
+    goron.mMode = 0;
+    goron.mDemoCamMode = 10;
+    goron.field_0x6d6 = 2;
+}
+
+bool blizzetaIsDead(const fopAc_ac_c* ac) {
+    return static_cast<const daB_YO_c*>(ac)->mAction == daB_YO_c::ACT_DEATH;
+}
+
+bool blizzetaReady(const fopAc_ac_c* ac) {
+    const auto& boss = *static_cast<const daB_YO_c*>(ac);
+    return boss.mAction != daB_YO_c::ACT_OPENING && boss.mAction != daB_YO_c::ACT_SERIOUS_DEMO;
+}
+
+void blizzetaKill(fopAc_ac_c* ac) {
+    auto& boss = *static_cast<daB_YO_c*>(ac);
+    boss.mLastPhaseDamage = 3;
+    boss.setIcicleOperate(10);
+    boss.setActionMode(daB_YO_c::ACT_DEATH, 0);
+}
+
 constexpr InPlaceDeath kInPlace[] = {
+    {fpcNm_B_YO_e, blizzetaIsDead, blizzetaKill, blizzetaReady, false},
+    {fpcNm_E_GOB_e, dangoroIsDead, dangoroKill, dangoroReady, false},
     {fpcNm_E_VT_e, deathSwordIsDead, deathSwordKill, deathSwordReady, false},
     {fpcNm_E_SB_e, shellBladeIsDead, shellBladeKill, nullptr, false},
     {fpcNm_B_BQ_e, diababaIsDead, diababaKill, diababaReady, false},
@@ -305,6 +345,8 @@ bool isKillSyncable(s16 procName, u32 params) {
     case fpcNm_E_TK2_e:  // Fire Toadpoli
     case fpcNm_E_WS_e:   // Wall Skulltula
     case fpcNm_B_BQ_e:   // Diababa
+    case fpcNm_B_YO_e:   // Blizzeta
+    case fpcNm_E_GOB_e:  // Dangoro
     case fpcNm_E_VT_e:   // Death Sword
     case fpcNm_E_DT_e:   // Deku Toad
     case fpcNm_E_FM_e:   // Fyrus

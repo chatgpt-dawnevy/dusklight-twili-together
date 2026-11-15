@@ -18,6 +18,7 @@
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_vt.h"
 #include "d/actor/d_a_b_bq.h"
+#include "d/actor/d_a_b_yo.h"
 #include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_gob.h"
 #include "d/actor/d_a_obj_life_container.h"
@@ -331,6 +332,17 @@ std::optional<bool> killBoss(StepContext& ctx) {
         auto& sword = *static_cast<daE_VA_c*>(b);
         sword.field_0x1381 = 1;
         sword.setActionMode(daE_VA_c::ACTION_OPACI_DEATH_e, 0);
+    } else if (how == "real" && profile == fpcNm_B_YO_e) {
+        auto& boss = *static_cast<daB_YO_c*>(b);
+        boss.mLastPhaseDamage = 3;
+        boss.setIcicleOperate(10);
+        boss.setActionMode(daB_YO_c::ACT_DEATH, 0);
+    } else if (how == "real" && profile == fpcNm_E_GOB_e) {
+        auto& goron = *static_cast<e_gob_class*>(b);
+        goron.mAction = kGobActionEnd;
+        goron.mMode = 0;
+        goron.mDemoCamMode = 10;
+        goron.field_0x6d6 = 2;
     } else if (how == "flags" && profile == fpcNm_E_GOB_e) {
         // The end of its defeat scene.
         dComIfGs_onStageMiddleBoss();
@@ -410,6 +422,22 @@ std::optional<bool> bossSteps(const std::string& op, StepContext& ctx) {
     }
 
     // Our own fight runs (value) and, for true, its intro is over (pressA for its text).
+    if (op == "prepareDangoro") {
+        auto* actor = liveBoss();
+        if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_E_GOB_e) {
+            if (ctx.seconds > ctx.timeout(20.0)) ctx.fail("Dangoro actor was not found");
+            return false;
+        }
+        auto& goron = *static_cast<e_gob_class*>(actor);
+        if (dComIfGp_event_runCheck() || goron.mDemoCamMode != 0) return false;
+        // Place Dangoro in his combat loop. This fixture exercises the ending.
+        if (goron.mAction < 2) {
+            goron.mAction = 2;
+            goron.mMode = -1;
+        }
+        return true;
+    }
+
     if (op == "prepareDeathSword") {
         auto* actor = liveBoss();
         if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_E_VT_e) {

@@ -342,3 +342,34 @@ module.exports.push(...["A", "B"].map(killer => ({
         ],
     })),
 })));
+
+module.exports.push(...["A", "B"].map(killer => ({
+    name: `boss-dangoro-shared-${killer.toLowerCase()}`,
+    description: `${killer} starts Dangoro's defeat; both clients finish his scene and open the exit`,
+    cvars: COMMON_CVARS,
+    instances: ["A", "B"].map(name => ({
+        name,
+        start: miniBosses[0].start,
+        steps: [
+            ...connect,
+            at(miniBosses[0].start.stage),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...(name === "A" ? [{ op: "setRoomOption", name: "syncNPCs" }] : []),
+            { op: "waitRoomOption", name: "syncNPCs" },
+            ...fightStart,
+            { op: "prepareDangoro" },
+            ...barrier("dangoro-ready", name === "A" ? "B" : "A"),
+            ...(name === killer ? [{ op: "killBoss" }] : []),
+            { op: "expectBossClear", heart: 0, warp: 0, timeoutSec: 95 },
+            { op: "expectSwitch", no: 14, room: 51, timeoutSec: 10 },
+            { op: "expectEnemySync", ...(name === killer ? { sent: 1 } : { received: 1, applied: 1 }) },
+            ...barrier("dangoro-cleared", name === "A" ? "B" : "A"),
+            { op: "quit" },
+        ],
+    })),
+})));
+
+
+module.exports.push(...["A", "B"].map(killer => sharedBossScenario({
+    id: "blizzeta", name: "Blizzeta (Snowpeak Ruins)", start: alive("snowpeakBoss"),
+}, killer)));
