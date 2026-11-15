@@ -7,6 +7,7 @@ const os = require("node:os");
 const path = require("node:path");
 const zlib = require("node:zlib");
 const scenarios = require("./scenarios");
+const { virtualDisplay } = require("./virtual-display");
 const { MOD_ID, CONFIG_PREFIX, escapeModId } = require("./lib");
 
 const REPO = path.resolve(__dirname, "..", "..", "..", "..");
@@ -377,6 +378,7 @@ async function runScenario(scenario, opts, outRoot) {
         const home = slotHome(dataDir);
         const env = {
             ...process.env,
+            ...opts.displayEnv,
             USERPROFILE: home,
             APPDATA: path.join(home, "AppData", "Roaming"),
             XDG_DATA_HOME: slotDataRoot(dataDir),
@@ -523,6 +525,11 @@ async function main() {
 
     let outRoot = path.join(OUT_DIR, timestamp());
     if (fs.existsSync(outRoot)) outRoot += `-${process.pid}`;
+    const display = await virtualDisplay();
+    opts.displayEnv = display.env;
+    const stopDisplay = () => display.stop();
+    process.once("exit", stopDisplay);
+    try {
     const reports = [];
     for (let rep = 0; rep < opts.repeat; rep++) {
         for (const s of selected) {
@@ -533,6 +540,10 @@ async function main() {
     console.log(`\n${reports.length - failed.length}/${reports.length} scenario run(s) passed. Output: ${outRoot}`);
     fs.writeFileSync(path.join(outRoot, "summary.json"), JSON.stringify(reports, null, 2));
     return failed.length ? 1 : 0;
+    } finally {
+        display.stop();
+        process.removeListener("exit", stopDisplay);
+    }
 }
 
 main().then((code) => process.exit(code), (err) => {

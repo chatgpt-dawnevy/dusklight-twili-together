@@ -1057,6 +1057,20 @@ function handleDamageResult(room, client, packet) {
     }
 }
 
+// A bounded iterative walk makes packet limits independent of the JS engine's
+// serializer (some versions serialize deep arrays without throwing).
+function validatePacketDepth(packet) {
+    const pending = [[packet, 0]];
+    while (pending.length) {
+        const [value, depth] = pending.pop();
+        if (value === null || typeof value !== "object") continue;
+        if (depth > 64) throw new RangeError("packet nesting exceeds 64 levels");
+        for (const child of Object.values(value)) {
+            if (child !== null && typeof child === "object") pending.push([child, depth + 1]);
+        }
+    }
+}
+
 function handlePacket(client, packet) {
     const room = rooms.get(client.roomId);
     if (!room) return;
@@ -1459,6 +1473,7 @@ function onMessage(conn, data) {
 
     if (conn.client === null) return; // drop packets before handshake
     try {
+        validatePacketDepth(packet);
         handlePacket(conn.client, packet);
     } catch (e) {
         log(`[${conn.client.name}] ${packet.type} failed: ${e.stack}`);
