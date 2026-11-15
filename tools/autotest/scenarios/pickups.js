@@ -372,6 +372,8 @@ module.exports.push({
         start: name === "A" ? STAGES.linksHouse : STAGES.southFaron,
         steps: [
             ...connect,
+            waitStage(name === "A" ? STAGES.linksHouse : STAGES.southFaron),
+            { op: "waitOwnWorldState" },
             { op: "waitPeers", count: 1 },
             { op: "setInventory", rupees: 0 },
             ...barrier("wallets-ready", name === "A" ? "B" : "A"),
@@ -398,6 +400,8 @@ module.exports.push({
         start: name === "A" ? STAGES.linksHouse : STAGES.southFaron,
         steps: [
             ...connect,
+            waitStage(name === "A" ? STAGES.linksHouse : STAGES.southFaron),
+            { op: "waitOwnWorldState" },
             { op: "waitPeers", count: 1 },
             { op: "waitRoomOption", name: "sharedStock", value: false },
             { op: "setInventory", rupees: 0 },

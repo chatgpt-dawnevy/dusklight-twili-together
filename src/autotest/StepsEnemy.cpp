@@ -1,3 +1,5 @@
+#include "m_Do/m_Do_ext.h"
+#include "d/actor/d_a_e_sb.h"
 // Steps for enemies, enemy scaling and enemy-death sync; reference in the runner README.
 
 #include "autotest/AutoTestSteps.hpp"
@@ -204,6 +206,16 @@ std::optional<bool> killEnemy(StepContext& ctx) {
         if (ctx.step.value("onActor", false)) {
             fopAcM_onActor(ac);
         }
+        return true;
+    }
+    if (how == "shellBlade") {
+        if (fopAcM_GetName(ac) != fpcNm_E_SB_e) {
+            ctx.fail("killEnemy shellBlade: actor is not a Shell Blade");
+            return false;
+        }
+        auto& shell = *static_cast<daE_SB_c*>(ac);
+        shell.field_0x5e6 = 0;
+        shell.ChanceMotion();
         return true;
     }
     if (how == "freezard") {

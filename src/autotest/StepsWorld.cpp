@@ -52,6 +52,12 @@ const RoomOption* findRoomOption(const std::string& name) {
 std::optional<bool> worldSteps(const std::string& op, StepContext& ctx) {
     const nlohmann::json& step = ctx.step;
 
+    if (op == "waitOwnWorldState") {
+        if (sync::enabled() && sync::ownStateSettled()) return true;
+        if (ctx.seconds > ctx.timeout(30.0)) ctx.fail("world state exchange did not settle");
+        return false;
+    }
+
     if (op == "waitSharedStock") {
         if (shared_stock::ready()) return true;
         if (ctx.seconds > ctx.timeout(30.0)) ctx.fail("shared stock did not initialize");

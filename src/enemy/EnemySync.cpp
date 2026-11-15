@@ -18,6 +18,7 @@
 #include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_hz.h"
 #include "d/actor/d_a_e_s1.h"
+#include "d/actor/d_a_e_sb.h"
 #include "d/actor/d_a_e_yg.h"
 #include "d/actor/d_a_e_yk.h"
 #include "d/actor/d_a_e_ymb.h"
@@ -180,7 +181,21 @@ void twilitBloatKill(fopAc_ac_c* ac) {
     bloat->mMode = 0;
 }
 
+// Both the bomb and exposed-tongue routes converge on the death animation.
+bool shellBladeIsDead(const fopAc_ac_c* ac) {
+    const int action = static_cast<const daE_SB_c*>(ac)->field_0x5b0;
+    return action == 2 || action == 3;
+}
+
+void shellBladeKill(fopAc_ac_c* ac) {
+    auto& shell = *static_cast<daE_SB_c*>(ac);
+    shell.field_0x5e6 = 0;
+    sync::RemoteApplyGuard guard;
+    shell.ChanceMotion();
+}
+
 constexpr InPlaceDeath kInPlace[] = {
+    {fpcNm_E_SB_e, shellBladeIsDead, shellBladeKill, nullptr, false},
     {fpcNm_B_BQ_e, diababaIsDead, diababaKill, diababaReady, false},
     {fpcNm_E_HZ_e, hzIsDead, hzKill, nullptr, true},
     {fpcNm_E_DT_e, dekuToadIsDead, dekuToadKill, dekuToadReady, false},
@@ -249,6 +264,7 @@ bool isKillSyncable(s16 procName, u32 params) {
     case fpcNm_E_DN_e:   // Lizalfos
     case fpcNm_E_KR_e:   // Kargorok
     case fpcNm_E_SF_e:   // Stalfos (only the final death puffs)
+    case fpcNm_E_SB_e:   // Shell Blade (native death and switch)
     case fpcNm_E_ST_e:   // Skulltula
     case fpcNm_E_MM_e:   // Helmasaur
     case fpcNm_E_DD_e:   // Dodongo

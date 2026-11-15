@@ -286,6 +286,18 @@ module.exports = [
             { op: "expectEnemyGone", tag: "second" },
             { op: "expectEnemySync", sent: 1, received: 1, applied: 1 },
         ]),
+    pair("enemy-shell-blade-death",
+        "Shell Blade runs its native defeat on both clients and flips its room switch",
+        (isA, other) => [
+            ...syncOn(isA),
+            ...spawnAndSettle([["shell", { name: "E_SB", param: 0xffffff19, dy: 10 }, 0, 250]]),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...barrier("shell-ready", other),
+            ...(isA ? [{ op: "killEnemy", tag: "shell", how: "shellBlade" }] : []),
+            { op: "expectEnemyGone", tag: "shell" },
+            { op: "expectSwitch", no: 0x19, room: 0, timeoutSec: 15 },
+            { op: "expectEnemySync", ...(isA ? { sent: 1 } : { received: 1, applied: 1 }) },
+        ]),
     pair("enemy-one-hit-and-shadow-insect",
         "a rat, a Bombskit and a Shadow Insect defeated by A disappear for B; B gets the insect switch",
         (isA, other) => [
