@@ -1547,7 +1547,7 @@ test("hostile field types and unserializable packets do not kill the server", ()
         a.send({ type, targetClientId: evil, hitId: evil, kind: evil, damage: evil, spl: evil, dirY: evil,
                  blocked: evil, viewSeq: evil, result: evil, reason: evil, knockout: evil });
     }
-    // Parses, but is nested too deeply for JSON.stringify: relaying it throws.
+    // Parses, but exceeds the explicit depth limit: rejected before relay or caching.
     const deep = "[".repeat(100000) + "]".repeat(100000);
     a.send(`{"type":"GIVE_ITEM","itemNo":1,"addToQueue":true,"junk":${deep}}`);
     a.send(`{"type":"UPDATE_WORLD_STATE","save":"X","junk":${deep}}`);
