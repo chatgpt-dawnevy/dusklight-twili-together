@@ -39,7 +39,8 @@ class Inventory {
         for (const [key, delta] of entries) {
             const next = (candidate.get(key) ?? 0) + delta;
             if (next < 0 || next > MAX_QUANTITY) accepted = false;
-            candidate.set(key, next);
+            if (next === 0) candidate.delete(key);
+            else candidate.set(key, next);
         }
         if (candidate.size > MAX_RESOURCES) accepted = false;
         // A rejected transaction is acknowledged too. Retrying it after a later

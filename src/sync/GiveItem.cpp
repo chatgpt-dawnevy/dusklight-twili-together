@@ -6,6 +6,7 @@
 #include "core/SaveGate.hpp"
 #include "core/Session.hpp"
 #include "sync/RemoteApplyGuard.hpp"
+#include "sync/SharedStock.hpp"
 #include "ui/ItemToasts.hpp"
 
 #include "d/d_item.h"
@@ -477,6 +478,7 @@ void removeItemObserver() {
 }
 
 void beforeItemGet(uint8_t itemNo) {
+    shared_stock::capture();
     State& st = state();
     s_itemGetDepth++;
     if (s_itemGetDepth == 1) {
@@ -510,6 +512,7 @@ void afterItemGet(uint8_t itemNo) {
         undoStageEffects(s_grant);
         restoreProgress(s_grant.kept);
         s_grant.active = false;
+        shared_stock::rebase();
         RemoteApplyGuard::leave();
     }
     if (s_itemGetDepth > 0 && s_itemGetDepth <= static_cast<int>(s_liveBefore.size())) {

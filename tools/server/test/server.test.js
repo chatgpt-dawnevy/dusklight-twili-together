@@ -2862,3 +2862,27 @@ test("block and chain packets from a member off the team game are dropped", () =
     await b.waitType("PUSH_MOVE");
     await off.expectNone((p) => p.type === "PUSH_MOVE", "PUSH_MOVE to a mismatched member");
 }));
+
+test("shared stock spans dungeons and survives reconnect without duplicate spending", () => withServer(async (mk) => {
+    const a = mk(), b = mk();
+    await a.join({ teamId: "stock", sessionKey: "stock_a" });
+    await b.join({ teamId: "stock", sessionKey: "stock_b" });
+    a.enterStage("D_MN01A"); b.enterStage("D_MN04A");
+    a.send({ type: "UPDATE_ROOM_STATE", state: { sharedStock: true } });
+    await a.waitType("UPDATE_ROOM_STATE", p => p.state.sharedStock);
+    a.send({ type: "INVENTORY_OPEN", counts: { rupees: 100, "key:1": 2 } });
+    const initial = await a.waitType("INVENTORY_STATE");
+    await b.waitType("INVENTORY_STATE");
+    const spend = { type: "INVENTORY_DELTA", epoch: initial.epoch, sequence: 1,
+        delta: { rupees: -80, "key:1": -1 } };
+    a.send(spend);
+    assert.equal((await b.waitType("INVENTORY_STATE")).counts.rupees, 20);
+    a.send(spend);
+    assert.equal((await b.waitType("INVENTORY_STATE")).counts["key:1"], 1);
+    await b.close();
+    const rejoined = mk();
+    await rejoined.join({ teamId: "stock", sessionKey: "stock_b" });
+    rejoined.enterStage("F_SP108");
+    rejoined.send({ type: "INVENTORY_OPEN", counts: { rupees: 999 } });
+    assert.equal((await rejoined.waitType("INVENTORY_STATE")).counts.rupees, 20);
+}));

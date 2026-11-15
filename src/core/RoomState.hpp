@@ -20,6 +20,7 @@ struct RoomState {
     bool shareWoodenShield = true;
     // Needs syncWorldState: a teammate's consumable pickups are added for us too.
     bool sharePickups = true;
+    bool sharedStock = false;
     // Enemy-death sync ("Sync Enemy Deaths").
     bool syncNPCs = false;
     // Needs syncNPCs ("Share Enemy Damage").
@@ -37,7 +38,7 @@ struct RoomState {
                pvpLethal == o.pvpLethal && showLocationsMode == o.showLocationsMode &&
                teleportMode == o.teleportMode && teleportAcrossTeams == o.teleportAcrossTeams &&
                syncWorldState == o.syncWorldState && shareWoodenShield == o.shareWoodenShield &&
-               sharePickups == o.sharePickups && syncNPCs == o.syncNPCs && syncEnemyDamage == o.syncEnemyDamage &&
+               sharePickups == o.sharePickups && sharedStock == o.sharedStock && syncNPCs == o.syncNPCs && syncEnemyDamage == o.syncEnemyDamage &&
                syncEnemyCombat == o.syncEnemyCombat && cutsceneSync == o.cutsceneSync && syncPushPull == o.syncPushPull &&
                enemyHealthMultiplier == o.enemyHealthMultiplier &&
                enemyCountMultiplier == o.enemyCountMultiplier;
@@ -55,6 +56,7 @@ struct RoomState {
             {"syncWorldState", syncWorldState},
             {"shareWoodenShield", shareWoodenShield},
             {"sharePickups", sharePickups},
+            {"sharedStock", sharedStock},
             {"syncNPCs", syncNPCs},
             {"syncEnemyDamage", syncEnemyDamage},
             {"syncEnemyCombat", syncEnemyCombat},
@@ -78,6 +80,7 @@ struct RoomState {
         syncWorldState = j.value("syncWorldState", syncWorldState);
         shareWoodenShield = j.value("shareWoodenShield", shareWoodenShield);
         sharePickups = j.value("sharePickups", sharePickups);
+        sharedStock = j.value("sharedStock", false);
         syncNPCs = j.value("syncNPCs", syncNPCs);
         syncEnemyDamage = j.value("syncEnemyDamage", syncEnemyDamage);
         syncEnemyCombat = j.value("syncEnemyCombat", false);

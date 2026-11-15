@@ -43,6 +43,7 @@ enum class Var : uint8_t {
     // Percent, the widget's zoom.
     PlayersWidgetScale,
     SharePickups,
+    SharedStock,
     ShowPlayerHealth,
     SyncPushPull,
 #if TWILI_ENABLE_AUTOTEST
