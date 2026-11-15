@@ -65,6 +65,7 @@ Location s_location;
 int s_room = -1;
 uint32_t s_authority = 0;
 uint64_t s_lastAcceptedSequence = 0;
+uint64_t s_nextSourceSequence = 1;
 Clock::time_point s_lastSend{};
 
 // daE_OC_c actions with self-contained combat behavior. Talk, scripted encounters
@@ -169,7 +170,8 @@ void sendBatch(Session& session, Json& states) {
     if (states.empty()) return;
     Json packet{{"type", "ENEMY_COMBAT"}, {"v", kVersion}, {"quiet", true},
                 {"stageName", s_location.stage.data()}, {"layerNo", s_location.layer},
-                {"roomNo", s_room}, {"states", std::move(states)}};
+                {"roomNo", s_room}, {"sourceSequence", s_nextSourceSequence++},
+                {"states", std::move(states)}};
     sync::stampPacket(packet, false);
     session.send(packet, net::Delivery::Droppable);
     states = Json::array();
@@ -181,6 +183,7 @@ void reset() {
     s_remote.clear();
     s_authority = 0;
     s_lastAcceptedSequence = 0;
+    s_nextSourceSequence = 1;
     s_room = -1;
     s_location = {};
     s_lastSend = {};

@@ -442,13 +442,21 @@ test("ENEMY_COMBAT scopes snapshots to the elected teammate in the same room", (
     b.send({ ...packet, clientId: a.id });
     await Promise.all([b.expectNone(isCombat, "invalid snapshots"), a.expectNone(isCombat, "non-authority")]);
 
-    a.send({ ...packet, clientId: b.id, teamId: "blue", sequence: 999999, addToQueue: true });
+    a.send({ ...packet, clientId: b.id, teamId: "blue", sequence: 999999, sourceSequence: 3, addToQueue: true });
     assert.deepEqual(await b.waitType("ENEMY_COMBAT"), {
         type: "ENEMY_COMBAT", v: 1, clientId: a.id, teamId: "red", senderSessionKey: "combat-a",
         protocolVersion: 5, addToQueue: false, sequence: 1, stageName: "F_SP108", layerNo: 0, roomNo: 0, states,
     });
     await Promise.all([otherRoom, otherLayer, otherTeam, otherStage, noSave].map((peer) =>
         peer.expectNone(isCombat, "snapshot leaked outside the encounter")));
+
+    a.send({ ...packet, sourceSequence: 3 });
+    a.send({ ...packet, sourceSequence: 2 });
+    a.send({ ...packet, sourceSequence: 3.5 });
+    a.send(packet);
+    await b.expectNone(isCombat, "duplicate, stale, malformed and downgraded source sequences");
+    a.send({ ...packet, sourceSequence: 5 });
+    assert.equal((await b.waitType("ENEMY_COMBAT")).sequence, 2, "source gaps are allowed");
 
     const late = mk();
     await late.join({ teamId: "red" });
@@ -468,7 +476,7 @@ test("ENEMY_COMBAT scopes snapshots to the elected teammate in the same room", (
     b.send(packet);
     const handedOff = await late.waitType("ENEMY_COMBAT");
     assert.equal(handedOff.clientId, b.id, "authority transfers on room exit");
-    assert.equal(handedOff.sequence, 2, "relay sequence stays monotonic across handoff");
+    assert.equal(handedOff.sequence, 3, "relay sequence stays monotonic across handoff");
 }));
 
 test("queued team packets are numbered by the server, live and in the replay", () => withServer(async (mk) => {

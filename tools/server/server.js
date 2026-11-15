@@ -859,6 +859,7 @@ function handleHandshake(conn, packet) {
         online: true,
         isSaveLoaded: false,
         caughtUp: false,
+        lastCombatSourceSequence: 0,
         stageName: "",
         layerNo: 0,
         roomNo: 0,
@@ -1211,6 +1212,13 @@ function handlePacket(client, packet) {
             peer.stageName === client.stageName && peer.layerNo === client.layerNo &&
             peer.roomNo === client.roomNo && peer.protocolVersion === client.protocolVersion && syncOk(room, peer));
         if (peers.some((peer) => peer.clientId < client.clientId)) return;
+        if ("sourceSequence" in packet) {
+            if (!Number.isSafeInteger(packet.sourceSequence) ||
+                packet.sourceSequence <= client.lastCombatSourceSequence) return;
+            client.lastCombatSourceSequence = packet.sourceSequence;
+        } else if (client.lastCombatSourceSequence !== 0) {
+            return;
+        }
         const combat = { type: packet.type, v: 1, clientId: client.clientId, teamId: client.teamId,
             senderSessionKey: client.sessionKey, protocolVersion: client.protocolVersion, addToQueue: false,
             sequence: nextCombatSequence++, stageName: client.stageName, layerNo: client.layerNo, roomNo: client.roomNo, states: packet.states };
