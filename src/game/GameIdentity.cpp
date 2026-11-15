@@ -7,6 +7,8 @@
 #include "game/RandoSeeds.hpp"
 #include "game/TeamGame.hpp"
 
+#include "m_Do/m_Do_MemCard.h"
+
 #include <mods/items.h>
 #include <mods/svc/host.h>
 #include <mods/svc/item.h>
@@ -17,6 +19,7 @@
 #include <chrono>
 #include <filesystem>
 #include <optional>
+#include <string_view>
 
 namespace twili::game_identity {
 namespace {
@@ -308,7 +311,13 @@ void sense(Clock::time_point now) {
         return;
     }
     st.nextProbe = now + kProbeInterval;
-    const std::string mode = config::hostString("game.lastSelectedGameModeId", std::string{});
+    std::string mode = config::hostString("game.lastSelectedGameModeId", std::string{});
+    // Older hosts do not expose find_host_var. The randomizer's active game
+    // mode uses its own memory card filename even before a seed is loaded.
+    const char* saveName = mDoMemCd_GetFileName();
+    if (saveName != nullptr && std::string_view(saveName) == "randomizer") {
+        mode = kRandomizerModeId;
+    }
     if (mode != st.mode) {
         st.mode = mode;
         st.dirty = true;
