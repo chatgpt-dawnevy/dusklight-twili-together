@@ -20,6 +20,7 @@
 #include "d/actor/d_a_e_s1.h"
 #include "d/actor/d_a_e_sb.h"
 #include "d/actor/d_a_e_yg.h"
+#include "d/actor/d_a_e_vt.h"
 #include "d/actor/d_a_e_yk.h"
 #include "d/actor/d_a_e_ymb.h"
 #include "d/actor/d_a_player.h"
@@ -194,7 +195,22 @@ void shellBladeKill(fopAc_ac_c* ac) {
     shell.ChanceMotion();
 }
 
+bool deathSwordIsDead(const fopAc_ac_c* ac) {
+    return static_cast<const daE_VA_c*>(ac)->mAction == daE_VA_c::ACTION_OPACI_DEATH_e;
+}
+
+bool deathSwordReady(const fopAc_ac_c* ac) {
+    return static_cast<const daE_VA_c*>(ac)->mAction >= daE_VA_c::ACTION_CLEAR_WAIT_e;
+}
+
+void deathSwordKill(fopAc_ac_c* ac) {
+    auto& sword = *static_cast<daE_VA_c*>(ac);
+    sword.field_0x1381 = 1;
+    sword.setActionMode(daE_VA_c::ACTION_OPACI_DEATH_e, 0);
+}
+
 constexpr InPlaceDeath kInPlace[] = {
+    {fpcNm_E_VT_e, deathSwordIsDead, deathSwordKill, deathSwordReady, false},
     {fpcNm_E_SB_e, shellBladeIsDead, shellBladeKill, nullptr, false},
     {fpcNm_B_BQ_e, diababaIsDead, diababaKill, diababaReady, false},
     {fpcNm_E_HZ_e, hzIsDead, hzKill, nullptr, true},
@@ -289,6 +305,7 @@ bool isKillSyncable(s16 procName, u32 params) {
     case fpcNm_E_TK2_e:  // Fire Toadpoli
     case fpcNm_E_WS_e:   // Wall Skulltula
     case fpcNm_B_BQ_e:   // Diababa
+    case fpcNm_E_VT_e:   // Death Sword
     case fpcNm_E_DT_e:   // Deku Toad
     case fpcNm_E_FM_e:   // Fyrus
     case fpcNm_E_YMB_e:  // Twilit Bloat

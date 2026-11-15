@@ -16,6 +16,7 @@
 #include "m_Do/m_Do_ext.h"
 
 #include "d/actor/d_a_e_dt.h"
+#include "d/actor/d_a_e_vt.h"
 #include "d/actor/d_a_b_bq.h"
 #include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_gob.h"
@@ -326,6 +327,10 @@ std::optional<bool> killBoss(StepContext& ctx) {
         fm->health = 0;
         fm->mAction = kFmActionEnd;
         fm->mMode = 0;
+    } else if (how == "real" && profile == fpcNm_E_VT_e) {
+        auto& sword = *static_cast<daE_VA_c*>(b);
+        sword.field_0x1381 = 1;
+        sword.setActionMode(daE_VA_c::ACTION_OPACI_DEATH_e, 0);
     } else if (how == "flags" && profile == fpcNm_E_GOB_e) {
         // The end of its defeat scene.
         dComIfGs_onStageMiddleBoss();
@@ -362,9 +367,10 @@ std::optional<bool> expectBossClear(StepContext& ctx) {
     if (dComIfGp_event_runCheck() && !padBusy() && ctx.ticks % 20 == 0) {
         pulsePad(0.0f, 0.0f, PAD_BUTTON_A, 3);
     }
-    if (!beaten || !quiet) {
+    const bool actorGone = !ctx.step.value("actorGone", false) || liveBoss() == nullptr;
+    if (!beaten || !quiet || !actorGone) {
         if (ctx.seconds > ctx.timeout(240.0)) {
-            const std::string why = fmt::format("expectBossClear: beaten {} quiet {} ({})", beaten, quiet, sd::debugText());
+            const std::string why = fmt::format("expectBossClear: beaten {} quiet {} actor gone {} ({})", beaten, quiet, actorGone, sd::debugText());
             if (soft) {
                 TwiliLog.warn("[autotest] {}", why);
                 return true;
@@ -404,6 +410,19 @@ std::optional<bool> bossSteps(const std::string& op, StepContext& ctx) {
     }
 
     // Our own fight runs (value) and, for true, its intro is over (pressA for its text).
+    if (op == "prepareDeathSword") {
+        auto* actor = liveBoss();
+        if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_E_VT_e) {
+            if (ctx.seconds > ctx.timeout(20.0)) ctx.fail("Death Sword actor was not found");
+            return false;
+        }
+        auto& sword = *static_cast<daE_VA_c*>(actor);
+        if (sword.mAction < daE_VA_c::ACTION_CLEAR_WAIT_e && !dComIfGp_event_runCheck()) {
+            sword.setActionMode(daE_VA_c::ACTION_CLEAR_WAIT_e, 0);
+        }
+        return sword.mAction >= daE_VA_c::ACTION_CLEAR_WAIT_e;
+    }
+
     if (op == "waitBossFight") {
         const bool want = step.value("value", true);
         const bool quiet = !dComIfGp_event_runCheck() &&

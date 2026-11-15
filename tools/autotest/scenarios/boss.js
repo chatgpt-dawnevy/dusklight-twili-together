@@ -317,3 +317,28 @@ module.exports = [
     ...bosses.map(observeScenario),
     ...miniBosses.map((m) => miniBossScenario(m, true)),
 ];
+
+module.exports.push(...["A", "B"].map(killer => ({
+    name: `boss-death-sword-shared-${killer.toLowerCase()}`,
+    description: `${killer} starts Death Sword's native defeat; both clients complete the scene`,
+    cvars: COMMON_CVARS,
+    instances: ["A", "B"].map(name => ({
+        name,
+        start: { ...alive("agBoss"), stage: "D_MN10B", room: 51, point: 0 },
+        steps: [
+            ...connect,
+            at("D_MN10B"),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...(name === "A" ? [{ op: "setRoomOption", name: "syncNPCs" }] : []),
+            { op: "waitRoomOption", name: "syncNPCs" },
+            { op: "prepareDeathSword" },
+            ...fightStart,
+            ...barrier("sword-ready", name === "A" ? "B" : "A"),
+            ...(name === killer ? [{ op: "killBoss" }] : []),
+            { op: "expectBossClear", heart: 0, warp: 0, actorGone: true, timeoutSec: 70 },
+            { op: "expectEnemySync", ...(name === killer ? { sent: 1 } : { received: 1, applied: 1 }) },
+            ...barrier("sword-cleared", name === "A" ? "B" : "A"),
+            { op: "quit" },
+        ],
+    })),
+})));
