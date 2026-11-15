@@ -388,3 +388,27 @@ module.exports.push({
         ],
     })),
 });
+
+module.exports.push({
+    name: "stock-individual-rupees",
+    description: "A pickup credits both wallets, while B's spending only changes B's balance",
+    cvars: COMMON_CVARS,
+    instances: ["A", "B"].map(name => ({
+        name,
+        start: name === "A" ? STAGES.linksHouse : STAGES.southFaron,
+        steps: [
+            ...connect,
+            { op: "waitPeers", count: 1 },
+            { op: "waitRoomOption", name: "sharedStock", value: false },
+            { op: "setInventory", rupees: 0 },
+            ...barrier("wallets-ready", name === "A" ? "B" : "A"),
+            ...(name === "A" ? [{ op: "giveItem", item: I.redRupee }] : []),
+            { op: "expectInventory", rupees: 20 },
+            ...barrier("pickup-shared", name === "A" ? "B" : "A"),
+            ...(name === "B" ? [{ op: "setInventory", rupees: 7 }] : []),
+            { op: "expectInventory", rupees: name === "B" ? 7 : 20, forSec: 2 },
+            ...barrier("spending-local", name === "A" ? "B" : "A"),
+            { op: "quit" },
+        ],
+    })),
+});

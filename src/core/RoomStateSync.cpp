@@ -4,6 +4,7 @@
 #include "core/Log.hpp"
 #include "core/Session.hpp"
 #include "sync/WorldSync.hpp"
+#include "sync/SharedStock.hpp"
 
 #include <nlohmann/json.hpp>
 
