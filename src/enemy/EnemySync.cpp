@@ -14,7 +14,6 @@
 #include "d/d_kankyo.h"  // LIGHT_INFLUENCE for d_a_e_fm.h
 
 #include "d/actor/d_a_b_bq.h"
-#include "d/actor/d_a_b_yo.h"
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_gob.h"
@@ -231,24 +230,7 @@ void dangoroKill(fopAc_ac_c* ac) {
     goron.field_0x6d6 = 2;
 }
 
-bool blizzetaIsDead(const fopAc_ac_c* ac) {
-    return static_cast<const daB_YO_c*>(ac)->mAction == daB_YO_c::ACT_DEATH;
-}
-
-bool blizzetaReady(const fopAc_ac_c* ac) {
-    const auto& boss = *static_cast<const daB_YO_c*>(ac);
-    return boss.mAction != daB_YO_c::ACT_OPENING && boss.mAction != daB_YO_c::ACT_SERIOUS_DEMO;
-}
-
-void blizzetaKill(fopAc_ac_c* ac) {
-    auto& boss = *static_cast<daB_YO_c*>(ac);
-    boss.mLastPhaseDamage = 3;
-    boss.setIcicleOperate(10);
-    boss.setActionMode(daB_YO_c::ACT_DEATH, 0);
-}
-
 constexpr InPlaceDeath kInPlace[] = {
-    {fpcNm_B_YO_e, blizzetaIsDead, blizzetaKill, blizzetaReady, false},
     {fpcNm_E_GOB_e, dangoroIsDead, dangoroKill, dangoroReady, false},
     {fpcNm_E_VT_e, deathSwordIsDead, deathSwordKill, deathSwordReady, false},
     {fpcNm_E_SB_e, shellBladeIsDead, shellBladeKill, nullptr, false},
@@ -345,7 +327,6 @@ bool isKillSyncable(s16 procName, u32 params) {
     case fpcNm_E_TK2_e:  // Fire Toadpoli
     case fpcNm_E_WS_e:   // Wall Skulltula
     case fpcNm_B_BQ_e:   // Diababa
-    case fpcNm_B_YO_e:   // Blizzeta
     case fpcNm_E_GOB_e:  // Dangoro
     case fpcNm_E_VT_e:   // Death Sword
     case fpcNm_E_DT_e:   // Deku Toad

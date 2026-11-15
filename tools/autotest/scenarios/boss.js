@@ -368,8 +368,3 @@ module.exports.push(...["A", "B"].map(killer => ({
         ],
     })),
 })));
-
-
-module.exports.push(...["A", "B"].map(killer => sharedBossScenario({
-    id: "blizzeta", name: "Blizzeta (Snowpeak Ruins)", start: alive("snowpeakBoss"),
-}, killer)));
