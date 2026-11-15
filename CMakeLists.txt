@@ -54,6 +54,7 @@ set(TWILI_SOURCES
     src/core/SaveGate.cpp
     src/core/Session.cpp
     src/core/Visibility.cpp
+    src/enemy/EnemyCombat.cpp
     src/enemy/EnemyCount.cpp
     src/enemy/EnemyDamage.cpp
     src/enemy/EnemyDamagePacket.cpp
@@ -114,6 +115,7 @@ set(TWILI_SOURCES
     src/sync/GiveItem.cpp
     src/sync/LightDrops.cpp
     src/sync/Pickups.cpp
+    src/sync/SharedStock.cpp
     src/sync/TakenActors.cpp
     src/sync/Takes.cpp
     src/sync/WorldState.cpp

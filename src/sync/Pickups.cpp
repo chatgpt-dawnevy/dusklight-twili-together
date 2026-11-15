@@ -173,6 +173,7 @@ void notePickup(uint8_t itemNo, const char* checkName) {
     {
         return;
     }
+    if (Session::instance().roomState().sharedStock && gainOf(itemNo).kind != Gain::Life) return;
     s_outgoing.push_back(itemNo);
     state().stats.pickupsSent++;
 }
@@ -228,7 +229,8 @@ void handleSharePickup(const nlohmann::json& packet) {
             continue;
         }
         const GainOf gain = gainOf(itemNo);
-        if (!share || gain.kind == Gain::None) {
+        if (!share || gain.kind == Gain::None ||
+            (Session::instance().roomState().sharedStock && gain.kind != Gain::Life)) {
             continue;
         }
         if (applyGain(gain)) {

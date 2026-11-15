@@ -4,6 +4,7 @@
 #include "core/Log.hpp"
 #include "core/Session.hpp"
 #include "sync/WorldSync.hpp"
+#include "sync/SharedStock.hpp"
 
 #include <nlohmann/json.hpp>
 
@@ -28,8 +29,10 @@ RoomState Session::roomStateFromSettings() const {
     state.syncWorldState = config::getBool(Var::SyncWorldState);
     state.shareWoodenShield = config::getBool(Var::ShareWoodenShield);
     state.sharePickups = config::getBool(Var::SharePickups);
+    state.sharedStock = config::getBool(Var::SharedStock);
     state.syncNPCs = config::getBool(Var::SyncEnemyDeaths);
     state.syncEnemyDamage = config::getBool(Var::SyncEnemyDamage);
+    state.syncEnemyCombat = config::getBool(Var::SyncEnemyCombat);
     state.cutsceneSync = config::getBool(Var::CutsceneSync);
     state.syncPushPull = config::getBool(Var::SyncPushPull);
     state.enemyHealthMultiplier = static_cast<int>(config::getInt(Var::EnemyHealthMultiplier));
@@ -72,7 +75,12 @@ void Session::handleUpdateRoomState(const nlohmann::json& packet) {
 
     const uint32_t previousOwner = mRoomState.ownerClientId;
     const bool wasSyncingWorld = mRoomState.syncWorldState;
+    const bool previousSharedStock = mRoomState.sharedStock;
     mRoomState.applyJson(j);
+    if (mRoomState.sharedStock != previousSharedStock) shared_stock::reset();
+    if (previousOwner != 0 && previousOwner != mRoomState.ownerClientId && isRoomOwner()) {
+        config::setBool(config::Var::SharedStock, mRoomState.sharedStock);
+    }
     if (mRoomState.ownerClientId != previousOwner) {
         TwiliLog.info("[session] room owner is now client {}{}", mRoomState.ownerClientId,
                      mRoomState.ownerClientId == mSelfClientId ? " (you)" : "");

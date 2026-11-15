@@ -352,6 +352,10 @@ const RoomBool kSyncOptions[] = {
         "<p>On: wooden shields sync like other gear, so a shield that burns up comes back while a "
         "teammate still has one.</p><p>Off: the Ordon Shield and Wooden Shield are personal. A "
         "burnt shield stays burnt and each player gets their own.</p>"},
+    {Var::SharedStock, &RoomState::sharedStock, "Shared Consumable Stock",
+        "<p>On: teammates use a common stock of rupees, ammunition, oil, bottles and dungeon keys. "
+        "Off: each player spends their own stock. Pickups are shared in both modes. "
+        "Needs Sync World State and an updated relay.</p>", Var::SyncWorldState},
     {Var::SharePickups, &RoomState::sharePickups, "Share Pickups",
         "<p>Rupees, hearts, fairies, arrows, seeds and bombs a teammate picks up are added for you "
         "too, up to your wallet, hearts, quiver and bags. Everyone keeps their own copy of each "
@@ -371,6 +375,9 @@ const RoomBool kSyncOptions[] = {
         "lands the last blow gets the drop. Enemies go down faster with more players; consider "
         "raising Enemy Health. Needs Sync Enemy Deaths.</p>",
         Var::SyncEnemyDeaths},
+    {Var::SyncEnemyCombat, &RoomState::syncEnemyCombat, "Sync Enemy Combat",
+        "<p>Shares Bokoblin movement and attacks, Fyrus knockdowns, and Deku Toad bomb stuns. "
+        "Needs Sync Enemy Deaths and an updated relay.</p>", Var::SyncEnemyDeaths},
     {Var::CutsceneSync, &RoomState::cutsceneSync, "Cutscene Sync",
         "<p>When a story cutscene starts for a teammate, players in the same room who are "
         "standing safely watch it too. Needs Sync World State.</p>"},

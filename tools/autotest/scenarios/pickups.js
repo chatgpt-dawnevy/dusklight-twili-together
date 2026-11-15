@@ -362,3 +362,57 @@ module.exports = [
         ],
     },
 ];
+
+module.exports.push({
+    name: "stock-shared-rupees",
+    description: "A pickup and B spending update both wallets while players are in different areas",
+    cvars: COMMON_CVARS,
+    instances: ["A", "B"].map(name => ({
+        name,
+        start: name === "A" ? STAGES.linksHouse : STAGES.southFaron,
+        steps: [
+            ...connect,
+            waitStage(name === "A" ? STAGES.linksHouse : STAGES.southFaron),
+            { op: "waitOwnWorldState" },
+            { op: "waitPeers", count: 1 },
+            { op: "setInventory", rupees: 0 },
+            ...barrier("wallets-ready", name === "A" ? "B" : "A"),
+            ...(name === "A" ? [{ op: "setRoomOption", name: "sharedStock" }] : []),
+            { op: "waitRoomOption", name: "sharedStock" },
+            { op: "waitSharedStock" },
+            ...(name === "A" ? [{ op: "giveItem", item: I.redRupee }] : []),
+            { op: "expectInventory", rupees: 20 },
+            ...barrier("pickup-shared", name === "A" ? "B" : "A"),
+            ...(name === "B" ? [{ op: "setInventory", rupees: 7 }] : []),
+            { op: "expectInventory", rupees: 7, forSec: 2 },
+            ...barrier("spending-shared", name === "A" ? "B" : "A"),
+            { op: "quit" },
+        ],
+    })),
+});
+
+module.exports.push({
+    name: "stock-individual-rupees",
+    description: "A pickup credits both wallets, while B's spending only changes B's balance",
+    cvars: COMMON_CVARS,
+    instances: ["A", "B"].map(name => ({
+        name,
+        start: name === "A" ? STAGES.linksHouse : STAGES.southFaron,
+        steps: [
+            ...connect,
+            waitStage(name === "A" ? STAGES.linksHouse : STAGES.southFaron),
+            { op: "waitOwnWorldState" },
+            { op: "waitPeers", count: 1 },
+            { op: "waitRoomOption", name: "sharedStock", value: false },
+            { op: "setInventory", rupees: 0 },
+            ...barrier("wallets-ready", name === "A" ? "B" : "A"),
+            ...(name === "A" ? [{ op: "giveItem", item: I.redRupee }] : []),
+            { op: "expectInventory", rupees: 20 },
+            ...barrier("pickup-shared", name === "A" ? "B" : "A"),
+            ...(name === "B" ? [{ op: "setInventory", rupees: 7 }] : []),
+            { op: "expectInventory", rupees: name === "B" ? 7 : 20, forSec: 2 },
+            ...barrier("spending-local", name === "A" ? "B" : "A"),
+            { op: "quit" },
+        ],
+    })),
+});

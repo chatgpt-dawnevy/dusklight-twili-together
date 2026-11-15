@@ -109,8 +109,9 @@ the others see the owner's values, greyed out.
 | --- | --- | --- |
 | Sync World State | on | teams share flags, items, keys and save progress; outside randomizer games an item the game takes away (the lantern the monkey steals, the Wooden Sword Talo takes, a trade item handed over) leaves every teammate too, shields never |
 | Share Wooden Shields | on | off: a burnt wooden shield stays burnt for everyone who lost it |
-| Sync Enemy Deaths | off | a regular enemy a teammate defeats near you disappears for you too (not bosses; the drop goes to whoever defeated it) |
-| Share Enemy Damage | on | with Sync Enemy Deaths: teammates wear down the same enemies, so your hits weaken their copy too |
+| Sync Enemy Deaths | off | nearby supported enemies defeated by a teammate disappear for you too. Diababa, Fyrus, Deku Toad and Twilit Bloat run their own defeat sequences on each client |
+| Share Enemy Damage | on | with Sync Enemy Deaths: your hits weaken supported enemies on your teammates’ clients, including Deku Toad and Argorok |
+| Sync Enemy Combat | off | shares movement, facing, and combat actions for Bokoblins, knockdowns for Fyrus, and bomb stuns for Deku Toad with teammates in the same room. Requires Sync Enemy Deaths and an updated relay |
 | Sync Blocks and Chains | on | with Sync World State: a block a teammate in your area pushes or pulls, a turning switch or push door they turn, or a chain switch they pull, moves for you too and stops on the same spot; only their game flips the switch |
 | Cutscene Sync | on | teammates standing safely in the same room watch a story cutscene together; never a boss scene |
 | PvP Mode | off | players can hurt each other |
@@ -220,7 +221,7 @@ older builds go without it or without those clicks.
 - The ImGui state-share debug tool is not supported while connected.
 - Reloading or disabling the mod from the Mods window while connected is not covered by the
   automated tests.
-- Only Windows has been tested.
+- The enemy and item sync regression scenarios also run against Dusklight 2.0.3 on Linux.
 - There is no public relay; someone in your group hosts one.
 
 ## Known issues

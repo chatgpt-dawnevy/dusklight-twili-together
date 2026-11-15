@@ -1,3 +1,5 @@
+#include "m_Do/m_Do_ext.h"
+#include "d/actor/d_a_e_sb.h"
 // Steps for enemies, enemy scaling and enemy-death sync; reference in the runner README.
 
 #include "autotest/AutoTestSteps.hpp"
@@ -15,6 +17,7 @@
 #include "m_Do/m_Do_ext.h"  // the enemy headers are not self-contained
 
 #include "SSystem/SComponent/c_malloc.h"
+#include "d/actor/d_a_e_fz.h"
 #include "d/actor/d_a_e_hz.h"
 #include "d/actor/d_a_e_mm.h"
 #include "d/actor/d_a_e_oc.h"
@@ -203,6 +206,27 @@ std::optional<bool> killEnemy(StepContext& ctx) {
         if (ctx.step.value("onActor", false)) {
             fopAcM_onActor(ac);
         }
+        return true;
+    }
+    if (how == "shellBlade") {
+        if (fopAcM_GetName(ac) != fpcNm_E_SB_e) {
+            ctx.fail("killEnemy shellBlade: actor is not a Shell Blade");
+            return false;
+        }
+        auto& shell = *static_cast<daE_SB_c*>(ac);
+        shell.field_0x5e6 = 0;
+        shell.ChanceMotion();
+        return true;
+    }
+    if (how == "freezard") {
+        if (fopAcM_GetName(ac) != fpcNm_E_FZ_e) {
+            ctx.fail("killEnemy freezard: '" + tag + "' is not a Mini Freezard");
+            return false;
+        }
+        ac->health = 0;
+        auto* freezard = static_cast<daE_FZ_c*>(ac);
+        freezard->mActionMode = ACT_DAMAGE;
+        freezard->mActionPhase = 0;
         return true;
     }
     if (how == "hz" || how == "hzReal") {
@@ -552,6 +576,31 @@ std::optional<bool> enemySteps(const std::string& op, StepContext& ctx) {
         if (ctx.seconds > ctx.timeout(20.0)) {
             ctx.fail(fmt::format("{} extras in this room, step wants {}", have,
                 ctx.step.value("count", 0)));
+        }
+        return false;
+    }
+
+    if (op == "startBokoblinAttack" || op == "expectBokoblinAttack") {
+        auto* actor = runningActor(taggedId(ctx.step));
+        if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_E_OC_e) {
+            ctx.fail("Bokoblin combat: tagged actor is unavailable");
+            return false;
+        }
+        auto& bokoblin = *static_cast<daE_OC_c*>(actor);
+        if (op == "startBokoblinAttack") {
+            bokoblin.current.pos.x = bokoblin.home.pos.x + 120.0f;
+            bokoblin.current.angle.y = bokoblin.shape_angle.y = 0x3000;
+            bokoblin.setActionMode(4, 2);
+            bokoblin.setBck(6, 0, 0.0f, 1.0f);
+            bokoblin.mpMorf->setFrameF(13.0f);
+            return true;
+        }
+        const bool attacking = bokoblin.mActionMode == 4 && bokoblin.mOcState == 2 &&
+            bokoblin.checkBck(6) && bokoblin.mSphs_at[0].ChkAtSet();
+        const bool moved = std::abs(bokoblin.current.pos.x - bokoblin.home.pos.x) > 60.0f;
+        if (attacking && moved && bokoblin.shape_angle.y == 0x3000) return true;
+        if (ctx.seconds > ctx.timeout(15.0)) {
+            ctx.fail("Bokoblin combat: remote position, facing and active swing did not converge");
         }
         return false;
     }

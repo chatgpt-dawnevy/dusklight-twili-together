@@ -5,6 +5,7 @@ const { EventEmitter } = require("events");
 const fs = require("fs");
 const net = require("net");
 const path = require("path");
+const { Inventory } = require("./inventory");
 
 const PORT = parseInt(process.argv[2] ?? process.env.TT_PORT ?? "3000", 10);
 const TCP_PORT_ARG = String(process.argv[3] ?? process.env.TT_TCP_PORT ?? (PORT === 0 ? "0" : "3001"));
@@ -58,7 +59,7 @@ const TEAM_PRESENCE_PACKET_TYPES = new Set(["ENEMY_DEFEATED", "ENEMY_DAMAGE", "S
 const TEAM_STORY_PACKET_TYPES = new Set(["STORY_MOVE"]);
 // Every client obeys these, so a relayed copy could rewrite the roster or disconnect the room.
 const SERVER_ONLY_TYPES = new Set(["ALL_CLIENT_STATE", "SERVER_MESSAGE", "DISABLE_CLIENT", "TEAM_STATE",
-    "TEAM_GAME_CONFLICT", "PVP_KNOCKOUT"]);
+    "TEAM_GAME_CONFLICT", "PVP_KNOCKOUT", "INVENTORY_STATE"]);
 const GAME_KINDS = new Set(["vanilla", "randomizer", "mode"]);
 const GAME_KEY_RE = /^[A-Za-z0-9/._-]{1,96}$/;
 const PERMALINK_RE = /^[A-Za-z0-9+/=_-]{1,512}$/;
@@ -213,8 +214,10 @@ function defaultRoomState() {
         syncWorldState: true,
         shareWoodenShield: true,
         sharePickups: true,
+        sharedStock: false,
         syncNPCs: false,
         syncEnemyDamage: true,
+        syncEnemyCombat: false,
         cutsceneSync: true,
         syncPushPull: true,
         enemyHealthMultiplier: 100,
@@ -233,6 +236,8 @@ function getOrCreateRoom(roomId) {
             // Kept while the room lives, so a team that comes back resumes its game.
             teams: new Map(),
             teamStates: new Map(),
+            inventories: new Map(),
+            inventoryEpoch: 0,
             teamQueues: new Map(),
             teamStoryMoves: new Map(),
             // Per room lifetime, so a replay tells packets a client already applied from new ones.
@@ -1056,6 +1061,20 @@ function handleDamageResult(room, client, packet) {
     }
 }
 
+// A bounded iterative walk makes packet limits independent of the JS engine's
+// serializer (some versions serialize deep arrays without throwing).
+function validatePacketDepth(packet) {
+    const pending = [[packet, 0]];
+    while (pending.length) {
+        const [value, depth] = pending.pop();
+        if (value === null || typeof value !== "object") continue;
+        if (depth > 64) throw new RangeError("packet nesting exceeds 64 levels");
+        for (const child of Object.values(value)) {
+            if (child !== null && typeof child === "object") pending.push([child, depth + 1]);
+        }
+    }
+}
+
 function handlePacket(client, packet) {
     const room = rooms.get(client.roomId);
     if (!room) return;
@@ -1110,7 +1129,12 @@ function handlePacket(client, packet) {
             return;
         }
         const incoming = packet.state && typeof packet.state === "object" ? packet.state : packet;
+        const previousSharedStock = room.state.sharedStock;
         applyRoomState(room.state, incoming);
+        if (previousSharedStock !== room.state.sharedStock) {
+            room.inventories.clear();
+            room.inventoryEpoch++;
+        }
         broadcastRoom(room, -1, roomStatePacket(room));
         return;
     }
@@ -1141,6 +1165,57 @@ function handlePacket(client, packet) {
         TEAM_PACKET_TYPES.has(packet.type) || TEAM_LIVE_PACKET_TYPES.has(packet.type);
     if (teamTraffic && !syncOk(room, client)) {
         dropUnsynced(room, client, packet.type);
+        return;
+    }
+
+    if (packet.type === "INVENTORY_OPEN" || packet.type === "INVENTORY_DELTA") {
+        if (!room.state.syncWorldState || !room.state.sharedStock || !syncOk(room, client) ||
+            !client.online || !client.isSaveLoaded || !client.sessionKey) return;
+        const key = worldKey(room, client);
+        let stock = room.inventories.get(key);
+        const peers = [...room.clients.values()].filter(peer => peer.online && peer.isSaveLoaded &&
+            peer.protocolVersion === client.protocolVersion && syncOk(room, peer) &&
+            worldKey(room, peer) === key);
+        if (!stock && packet.type === "INVENTORY_OPEN") {
+            // One initial save is authoritative. Late/stale saves must never refill stock.
+            if (peers.some(peer => peer.clientId < client.clientId)) return;
+            try {
+                stock = { ledger: new Inventory(packet.counts), epoch: `${room.queueEpoch}:${++room.inventoryEpoch}` };
+            } catch { return; }
+            room.inventories.set(key, stock);
+        }
+        if (!stock) return;
+        if (packet.type === "INVENTORY_DELTA") {
+            if (packet.epoch !== stock.epoch) return;
+            try { stock.ledger.transact(client.sessionKey, packet.sequence, packet.delta); }
+            catch { return; }
+        }
+        for (const peer of peers) {
+            send(peer, { type: "INVENTORY_STATE", epoch: stock.epoch, teamId: client.teamId,
+                gameKey: teamGameKey(room, client), layout: client.layout,
+                ...stock.ledger.snapshot(peer.sessionKey) });
+        }
+        return;
+    }
+
+    if (packet.type === "ENEMY_COMBAT") {
+        if (!room.state.syncNPCs || !room.state.syncEnemyCombat || !client.online ||
+            !client.isSaveLoaded || !syncOk(room, client) || client.roomNo < 0 ||
+            packet.stageName !== client.stageName || packet.layerNo !== client.layerNo ||
+            packet.roomNo !== client.roomNo || packet.v !== 1 ||
+            !Array.isArray(packet.states) || packet.states.length < 1 || packet.states.length > 16) return;
+
+        const peers = [...room.clients.values()].filter((peer) =>
+            peer.online && peer.isSaveLoaded && peer.teamId === client.teamId &&
+            peer.stageName === client.stageName && peer.layerNo === client.layerNo &&
+            peer.roomNo === client.roomNo && peer.protocolVersion === client.protocolVersion && syncOk(room, peer));
+        if (peers.some((peer) => peer.clientId < client.clientId)) return;
+        const combat = { type: packet.type, v: 1, clientId: client.clientId, teamId: client.teamId,
+            senderSessionKey: client.sessionKey, protocolVersion: client.protocolVersion, addToQueue: false,
+            stageName: client.stageName, layerNo: client.layerNo, roomNo: client.roomNo, states: packet.states };
+        for (const peer of peers) {
+            if (peer !== client) send(peer, combat);
+        }
         return;
     }
 
@@ -1437,6 +1512,7 @@ function onMessage(conn, data) {
 
     if (conn.client === null) return; // drop packets before handshake
     try {
+        validatePacketDepth(packet);
         handlePacket(conn.client, packet);
     } catch (e) {
         log(`[${conn.client.name}] ${packet.type} failed: ${e.stack}`);

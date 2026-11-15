@@ -15,6 +15,8 @@
 #include "d/d_kankyo.h"
 #include "m_Do/m_Do_ext.h"
 
+#include "d/actor/d_a_e_dt.h"
+#include "d/actor/d_a_e_vt.h"
 #include "d/actor/d_a_b_bq.h"
 #include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_gob.h"
@@ -325,6 +327,16 @@ std::optional<bool> killBoss(StepContext& ctx) {
         fm->health = 0;
         fm->mAction = kFmActionEnd;
         fm->mMode = 0;
+    } else if (how == "real" && profile == fpcNm_E_VT_e) {
+        auto& sword = *static_cast<daE_VA_c*>(b);
+        sword.field_0x1381 = 1;
+        sword.setActionMode(daE_VA_c::ACTION_OPACI_DEATH_e, 0);
+    } else if (how == "real" && profile == fpcNm_E_GOB_e) {
+        auto& goron = *static_cast<e_gob_class*>(b);
+        goron.mAction = kGobActionEnd;
+        goron.mMode = 0;
+        goron.mDemoCamMode = 10;
+        goron.field_0x6d6 = 2;
     } else if (how == "flags" && profile == fpcNm_E_GOB_e) {
         // The end of its defeat scene.
         dComIfGs_onStageMiddleBoss();
@@ -361,9 +373,10 @@ std::optional<bool> expectBossClear(StepContext& ctx) {
     if (dComIfGp_event_runCheck() && !padBusy() && ctx.ticks % 20 == 0) {
         pulsePad(0.0f, 0.0f, PAD_BUTTON_A, 3);
     }
-    if (!beaten || !quiet) {
+    const bool actorGone = !ctx.step.value("actorGone", false) || liveBoss() == nullptr;
+    if (!beaten || !quiet || !actorGone) {
         if (ctx.seconds > ctx.timeout(240.0)) {
-            const std::string why = fmt::format("expectBossClear: beaten {} quiet {} ({})", beaten, quiet, sd::debugText());
+            const std::string why = fmt::format("expectBossClear: beaten {} quiet {} actor gone {} ({})", beaten, quiet, actorGone, sd::debugText());
             if (soft) {
                 TwiliLog.warn("[autotest] {}", why);
                 return true;
@@ -403,6 +416,35 @@ std::optional<bool> bossSteps(const std::string& op, StepContext& ctx) {
     }
 
     // Our own fight runs (value) and, for true, its intro is over (pressA for its text).
+    if (op == "prepareDangoro") {
+        auto* actor = liveBoss();
+        if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_E_GOB_e) {
+            if (ctx.seconds > ctx.timeout(20.0)) ctx.fail("Dangoro actor was not found");
+            return false;
+        }
+        auto& goron = *static_cast<e_gob_class*>(actor);
+        if (dComIfGp_event_runCheck() || goron.mDemoCamMode != 0) return false;
+        // Place Dangoro in his combat loop. This fixture exercises the ending.
+        if (goron.mAction < 2) {
+            goron.mAction = 2;
+            goron.mMode = -1;
+        }
+        return true;
+    }
+
+    if (op == "prepareDeathSword") {
+        auto* actor = liveBoss();
+        if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_E_VT_e) {
+            if (ctx.seconds > ctx.timeout(20.0)) ctx.fail("Death Sword actor was not found");
+            return false;
+        }
+        auto& sword = *static_cast<daE_VA_c*>(actor);
+        if (sword.mAction < daE_VA_c::ACTION_CLEAR_WAIT_e && !dComIfGp_event_runCheck()) {
+            sword.setActionMode(daE_VA_c::ACTION_CLEAR_WAIT_e, 0);
+        }
+        return sword.mAction >= daE_VA_c::ACTION_CLEAR_WAIT_e;
+    }
+
     if (op == "waitBossFight") {
         const bool want = step.value("value", true);
         const bool quiet = !dComIfGp_event_runCheck() &&
@@ -416,6 +458,80 @@ std::optional<bool> bossSteps(const std::string& op, StepContext& ctx) {
         }
         if (ctx.seconds > ctx.timeout(120.0)) {
             ctx.fail(fmt::format("waitBossFight: fighting {} (want {}), quiet {}", boss::fighting(), want, quiet));
+        }
+        return false;
+    }
+
+    if (op == "prepareToadCombat" || op == "startToadBombStun" || op == "expectToadBombStun") {
+        auto* actor = liveBoss();
+        if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_E_DT_e) {
+            ctx.fail("Deku Toad phase: no live Deku Toad");
+            return false;
+        }
+        auto& toad = *static_cast<daE_DT_c*>(actor);
+        constexpr int bombDamage = 8;
+        if (op == "prepareToadCombat") {
+            if (dComIfGp_event_runCheck()) return false;
+            // Skip the camera-driven introduction in this phase-only fixture.
+            if (toad.mAction == 10) {
+                toad.current.pos.set(0.0f, 0.0f, -500.0f);
+                toad.gravity = -5.0f;
+                toad.setActionMode(0, 0);
+            }
+            return true;
+        }
+        if (op == "startToadBombStun") {
+            toad.setActionMode(bombDamage, 0);
+            return true;
+        }
+        if (toad.mAction == bombDamage && toad.mMode == 1) return true;
+        if (ctx.seconds > ctx.timeout(30.0)) ctx.fail(fmt::format("Deku Toad did not start its bomb animation (action {} mode {})", toad.mAction, toad.mMode));
+        return false;
+    }
+
+    if (op == "startFyrusKnockdown" || op == "expectFyrusVulnerable") {
+        auto* actor = liveBoss();
+        if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_E_FM_e) {
+            ctx.fail("Fyrus phase: no live Fyrus");
+            return false;
+        }
+        auto* fyrus = static_cast<e_fm_class*>(actor);
+        constexpr int downAction = 9;
+        if (op == "startFyrusKnockdown") {
+            fyrus->mDownCnt++;
+            fyrus->health = 50;
+            fyrus->mAction = downAction;
+            fyrus->mMode = 0;
+            fyrus->field_0x1b078 = 1;
+            return true;
+        }
+        if (fyrus->mAction == downAction && fyrus->mMode == 2 && fyrus->mDownCnt == 1) {
+            return true;
+        }
+        if (ctx.seconds > ctx.timeout(30.0)) {
+            ctx.fail("Fyrus did not enter the native vulnerable phase");
+        }
+        return false;
+    }
+
+    if (op == "prepareDiababaCore") {
+        // Enter the native body emergence after the intro, as the first phase would.
+        auto* actor = liveBoss();
+        if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_B_BQ_e) {
+            ctx.fail("prepareDiababaCore: no Diababa in the arena");
+            return false;
+        }
+        auto* diababa = static_cast<b_bq_class*>(actor);
+        if (diababa->mDemoMode == 0 && !dComIfGp_event_runCheck()) {
+            if (diababa->mAction != 0) {
+                return true;
+            }
+            if (diababa->mMode == 1) {
+                diababa->mMode = 2;
+            }
+        }
+        if (ctx.seconds > ctx.timeout(60.0)) {
+            ctx.fail("prepareDiababaCore: Diababa did not emerge");
         }
         return false;
     }

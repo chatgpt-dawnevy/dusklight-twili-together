@@ -27,9 +27,19 @@ directory can relink while tests run, and give concurrent runs their own `--work
 node tools/autotest/run.js smoke --exe <copy>/dusklight.exe --work <dir>
 ```
 
-Needs a GPU (there is no headless mode) and a user config with a valid disc image path: each run
-takes it from `%APPDATA%/TwilitRealm/Dusklight/config.json`. Instances open 800x480 windows in a
-row, muted. Don't minimize them: a minimized window skips frames.
+Game runs require Linux and Xvfb. Every invocation starts a private X server using
+`-displayfd`; games receive that display and the X11 SDL backend regardless of the desktop's
+DISPLAY or WAYLAND_DISPLAY. If isolation is unavailable, the runner fails before launching
+any game. Set `TWILI_XVFB` to the Xvfb executable if it is not on PATH. Native Windows game
+runs are currently refused; Windows compilation remains a separate CI job.
+
+A Vulkan driver is required. Software rendering can be selected with
+`VK_DRIVER_FILES=/usr/share/vulkan/icd.d/lvp_icd.json`. The disc image path is read from
+`${XDG_DATA_HOME:-~/.local/share}/TwilitRealm/Dusklight/config.json`. Pass the Linux Dusklight
+executable with `--exe` and put the mod in its adjacent `mods/` directory. Test windows exist
+only on the private virtual display and are muted.
+
+Run the isolation regression tests with `node --test tools/autotest/test/*.test.js`.
 
 Exit code is 0 when every scenario passed. Output goes to `out/<timestamp>/<scenario>/`:
 `report.json`, `<instance>.log`, `<instance>.stderr.log`, `<instance>.result.json`,
@@ -61,7 +71,8 @@ connected. Check that by hand after changes to startup, shutdown or the actors.
 Every instance runs with `--user-dir work/slot<N>` (config, memory card, achievements, mod data
 and the mod cache) and `--log-dir work/slot<N>/logs`. The game's cache directory (pipeline caches,
 and the logs without `--log-dir`) is the SDL preference path, which `--user-dir` does not move, so
-the runner also points `USERPROFILE`, `APPDATA` and `LOCALAPPDATA` at `work/slot<N>/home`. A run
+the runner also points `USERPROFILE`, `APPDATA` and `LOCALAPPDATA` at `work/slot<N>/home` on Windows and redirects
+the XDG data, cache and config directories on Linux. A run
 therefore never writes the player's real game data.
 
 Before each scenario the runner rebuilds the slot's `config.json`: from the user's config only the

@@ -21,7 +21,7 @@ const fightStart = [
     { op: "keepLife" },
     { op: "markMaxLife" },
     // The arena plays its intro on entry.
-    { op: "waitBossFight", quietTicks: 90, timeoutSec: 240 },
+    { op: "waitBossFight", quietTicks: 90, pressA: true, timeoutSec: 240 },
 ];
 
 // A boss arena with the boss alive (lib.js's bossRoom checkpoints have it beaten).
@@ -235,6 +235,35 @@ const bosses = [
     { id: "diababa", name: "Diababa (Forest Temple)", start: alive("forestBoss"), exitStage: "F_SP108", crystal: 0 },
     { id: "fyrus", name: "Fyrus (Goron Mines)", start: alive("goronMinesBoss"), exitStage: "F_SP109", crystal: 1 },
 ];
+function sharedBossScenario(boss, killer) {
+    return {
+        name: `boss-${boss.id}-shared-${killer.toLowerCase()}`,
+        description: `${killer} defeats ${boss.name}; both arenas run the native clear and create a heart and warp`,
+        tags: ["boss-fight"],
+        timeoutSec: 600,
+        cvars: COMMON_CVARS,
+        instances: ["A", "B"].map((name) => ({
+            name,
+            start: boss.start,
+            steps: [
+                ...connect,
+                at(boss.start.stage),
+                { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 120 },
+                ...(name === "A" ? [{ op: "setRoomOption", name: "syncNPCs" }] : []),
+                { op: "waitRoomOption", name: "syncNPCs", timeoutSec: 30 },
+                ...fightStart,
+                ...(boss.id === "diababa" ? [{ op: "prepareDiababaCore" }] : []),
+                ...barrier("fighting", name === "A" ? "B" : "A", 300),
+                ...(name === killer ? [{ op: "killBoss", how: "real" }] : []),
+                { op: "expectBossClear", heart: 1, warp: 1, timeoutSec: 300 },
+                { op: "expectDungeonBit", bit: BOSS_BIT },
+                ...barrier("cleared", name === "A" ? "B" : "A", 300),
+                { op: "quit" },
+            ],
+        })),
+    };
+}
+
 const miniBosses = [
     {
         id: "dangoro",
@@ -245,9 +274,97 @@ const miniBosses = [
     },
 ];
 
+function sharedPhase(name, description, start, trigger, expect) {
+    return {
+        name,
+        description,
+        tags: ["boss-fight"],
+        timeoutSec: 600,
+        cvars: COMMON_CVARS,
+        instances: ["A", "B"].map((name) => ({
+            name,
+            start,
+            steps: [
+                ...connect,
+                at(start.stage),
+                { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 120 },
+                ...(name === "A" ? [
+                    { op: "setRoomOption", name: "syncNPCs" },
+                    { op: "setRoomOption", name: "syncEnemyCombat" },
+                ] : []),
+                { op: "waitRoomOption", name: "syncNPCs", timeoutSec: 30 },
+                { op: "waitRoomOption", name: "syncEnemyCombat", timeoutSec: 30 },
+                ...fightStart,
+                ...(trigger === "startToadBombStun" ? [{ op: "prepareToadCombat" }] : []),
+                ...barrier("phase-ready", name === "A" ? "B" : "A", 300),
+                ...(name === "A" ? [{ op: trigger }] : []),
+                { op: expect, timeoutSec: 90 },
+                ...barrier("phase-reached", name === "A" ? "B" : "A", 120),
+                { op: "quit" },
+            ],
+        })),
+    };
+}
+
 module.exports = [
+    sharedPhase("boss-fyrus-shared-knockdown", "A knocks Fyrus down; B enters the native vulnerable phase",
+        bosses[1].start, "startFyrusKnockdown", "expectFyrusVulnerable"),
+    sharedPhase("boss-toad-shared-bomb-stun", "A stuns Deku Toad with a bomb; B plays the native bomb reaction",
+        { ...alive("lakebedBoss"), stage: "D_MN01B", room: 51 }, "startToadBombStun", "expectToadBombStun"),
     ...bosses.map(bossScenario),
+    ...bosses.flatMap((boss) => ["A", "B"].map((killer) => sharedBossScenario(boss, killer))),
     ...miniBosses.map((m) => miniBossScenario(m, false)),
     ...bosses.map(observeScenario),
     ...miniBosses.map((m) => miniBossScenario(m, true)),
 ];
+
+module.exports.push(...["A", "B"].map(killer => ({
+    name: `boss-death-sword-shared-${killer.toLowerCase()}`,
+    description: `${killer} starts Death Sword's native defeat; both clients complete the scene`,
+    cvars: COMMON_CVARS,
+    instances: ["A", "B"].map(name => ({
+        name,
+        start: { ...alive("agBoss"), stage: "D_MN10B", room: 51, point: 0 },
+        steps: [
+            ...connect,
+            at("D_MN10B"),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...(name === "A" ? [{ op: "setRoomOption", name: "syncNPCs" }] : []),
+            { op: "waitRoomOption", name: "syncNPCs" },
+            { op: "prepareDeathSword" },
+            ...fightStart,
+            ...barrier("sword-ready", name === "A" ? "B" : "A"),
+            ...(name === killer ? [{ op: "killBoss" }] : []),
+            { op: "expectBossClear", heart: 0, warp: 0, actorGone: true, timeoutSec: 70 },
+            { op: "expectEnemySync", ...(name === killer ? { sent: 1 } : { received: 1, applied: 1 }) },
+            ...barrier("sword-cleared", name === "A" ? "B" : "A"),
+            { op: "quit" },
+        ],
+    })),
+})));
+
+module.exports.push(...["A", "B"].map(killer => ({
+    name: `boss-dangoro-shared-${killer.toLowerCase()}`,
+    description: `${killer} starts Dangoro's defeat; both clients finish his scene and open the exit`,
+    cvars: COMMON_CVARS,
+    instances: ["A", "B"].map(name => ({
+        name,
+        start: miniBosses[0].start,
+        steps: [
+            ...connect,
+            at(miniBosses[0].start.stage),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...(name === "A" ? [{ op: "setRoomOption", name: "syncNPCs" }] : []),
+            { op: "waitRoomOption", name: "syncNPCs" },
+            ...fightStart,
+            { op: "prepareDangoro" },
+            ...barrier("dangoro-ready", name === "A" ? "B" : "A"),
+            ...(name === killer ? [{ op: "killBoss" }] : []),
+            { op: "expectBossClear", heart: 0, warp: 0, timeoutSec: 95 },
+            { op: "expectSwitch", no: 14, room: 51, timeoutSec: 10 },
+            { op: "expectEnemySync", ...(name === killer ? { sent: 1 } : { received: 1, applied: 1 }) },
+            ...barrier("dangoro-cleared", name === "A" ? "B" : "A"),
+            { op: "quit" },
+        ],
+    })),
+})));

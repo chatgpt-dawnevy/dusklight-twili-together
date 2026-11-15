@@ -1,3 +1,4 @@
+#include "sync/SharedStock.hpp"
 // Steps for world sync and room options; reference in the runner README.
 
 #include "autotest/AutoTestSteps.hpp"
@@ -26,8 +27,10 @@ constexpr RoomOption kRoomOptions[] = {
     {"syncWorldState", Var::SyncWorldState, &RoomState::syncWorldState},
     {"shareWoodenShield", Var::ShareWoodenShield, &RoomState::shareWoodenShield},
     {"sharePickups", Var::SharePickups, &RoomState::sharePickups},
+    {"sharedStock", Var::SharedStock, &RoomState::sharedStock},
     {"teleportMode", Var::TeleportMode, &RoomState::teleportMode},
     {"syncNPCs", Var::SyncEnemyDeaths, &RoomState::syncNPCs},
+    {"syncEnemyCombat", Var::SyncEnemyCombat, &RoomState::syncEnemyCombat},
     {"syncEnemyDamage", Var::SyncEnemyDamage, &RoomState::syncEnemyDamage},
     {"pvpMode", Var::PvpMode, &RoomState::pvpMode},
     {"pvpFriendlyFire", Var::PvpFriendlyFire, &RoomState::pvpFriendlyFire},
@@ -48,6 +51,18 @@ const RoomOption* findRoomOption(const std::string& name) {
 
 std::optional<bool> worldSteps(const std::string& op, StepContext& ctx) {
     const nlohmann::json& step = ctx.step;
+
+    if (op == "waitOwnWorldState") {
+        if (sync::enabled() && sync::ownStateSettled()) return true;
+        if (ctx.seconds > ctx.timeout(30.0)) ctx.fail("world state exchange did not settle");
+        return false;
+    }
+
+    if (op == "waitSharedStock") {
+        if (shared_stock::ready()) return true;
+        if (ctx.seconds > ctx.timeout(30.0)) ctx.fail("shared stock did not initialize");
+        return false;
+    }
 
     // Our room-setting default; the owner's value is the room's, so every instance sets it.
     if (op == "setRoomOption" || op == "waitRoomOption") {

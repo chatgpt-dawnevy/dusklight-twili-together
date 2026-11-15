@@ -20,10 +20,12 @@ struct RoomState {
     bool shareWoodenShield = true;
     // Needs syncWorldState: a teammate's consumable pickups are added for us too.
     bool sharePickups = true;
+    bool sharedStock = false;
     // Enemy-death sync ("Sync Enemy Deaths").
     bool syncNPCs = false;
     // Needs syncNPCs ("Share Enemy Damage").
     bool syncEnemyDamage = true;
+    bool syncEnemyCombat = false;
     bool cutsceneSync = true;
     // Needs syncWorldState: teammates' block pushes and chain pulls play here too.
     bool syncPushPull = true;
@@ -36,8 +38,8 @@ struct RoomState {
                pvpLethal == o.pvpLethal && showLocationsMode == o.showLocationsMode &&
                teleportMode == o.teleportMode && teleportAcrossTeams == o.teleportAcrossTeams &&
                syncWorldState == o.syncWorldState && shareWoodenShield == o.shareWoodenShield &&
-               sharePickups == o.sharePickups && syncNPCs == o.syncNPCs && syncEnemyDamage == o.syncEnemyDamage &&
-               cutsceneSync == o.cutsceneSync && syncPushPull == o.syncPushPull &&
+               sharePickups == o.sharePickups && sharedStock == o.sharedStock && syncNPCs == o.syncNPCs && syncEnemyDamage == o.syncEnemyDamage &&
+               syncEnemyCombat == o.syncEnemyCombat && cutsceneSync == o.cutsceneSync && syncPushPull == o.syncPushPull &&
                enemyHealthMultiplier == o.enemyHealthMultiplier &&
                enemyCountMultiplier == o.enemyCountMultiplier;
     }
@@ -54,8 +56,10 @@ struct RoomState {
             {"syncWorldState", syncWorldState},
             {"shareWoodenShield", shareWoodenShield},
             {"sharePickups", sharePickups},
+            {"sharedStock", sharedStock},
             {"syncNPCs", syncNPCs},
             {"syncEnemyDamage", syncEnemyDamage},
+            {"syncEnemyCombat", syncEnemyCombat},
             {"cutsceneSync", cutsceneSync},
             {"syncPushPull", syncPushPull},
             {"enemyHealthMultiplier", enemyHealthMultiplier},
@@ -76,8 +80,10 @@ struct RoomState {
         syncWorldState = j.value("syncWorldState", syncWorldState);
         shareWoodenShield = j.value("shareWoodenShield", shareWoodenShield);
         sharePickups = j.value("sharePickups", sharePickups);
+        sharedStock = j.value("sharedStock", false);
         syncNPCs = j.value("syncNPCs", syncNPCs);
         syncEnemyDamage = j.value("syncEnemyDamage", syncEnemyDamage);
+        syncEnemyCombat = j.value("syncEnemyCombat", false);
         cutsceneSync = j.value("cutsceneSync", cutsceneSync);
         syncPushPull = j.value("syncPushPull", syncPushPull);
         enemyHealthMultiplier = j.value("enemyHealthMultiplier", enemyHealthMultiplier);

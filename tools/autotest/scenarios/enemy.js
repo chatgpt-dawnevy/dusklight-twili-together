@@ -6,7 +6,7 @@ const { STAGES, COMMON_CVARS, tt, waitStage, barrier, connect } = require("../li
 const BOKOBLIN = { name: "E_oc", param: 0xffffff00, dy: 30 };
 // Tektite, not on the health-scaling allowlist: keeps its 80 whatever the room sets.
 const TEKTITE = { name: "E_tt", param: 0xffffffff, dy: 30 };
-// Mini Freezard, neither kill-synced (its death has no puff and no mark) nor duplicated.
+// Mini Freezard, with a native death that has no puff. It is never duplicated.
 const FREEZARD = { name: "E_fz", param: 0xffffffff, dy: 30 };
 // Tile Worm with defeated switch 0x13 (its low param byte).
 const TILE_WORM = { name: "E_hz", param: 0xffffff13, dy: 0 };
@@ -24,6 +24,9 @@ const SHADOW_BEAST = { name: "E_s1", param: 0xffffffff, dy: 30 };
 const STALFOS = { name: "E_sf", param: 0xffffffff, angleZ: 0xff, dy: 30 };
 const HELMASAUR = { name: "E_mm", param: 0xffffffff, dy: 30 };
 const CHU_WORM = { name: "E_sm", param: 0xffffffff, dy: 30 };
+const RAT = { name: "E_ms", param: 0xffffff00, dy: 30 };
+const BOMBSKIT = { name: "E_cr", param: 0xffffffff, dy: 30 };
+const SHADOW_INSECT = { name: "E_ym", param: 0x19ffff00, dy: 30 };
 // E_Make (d_a_obj_enemy_create.cpp): type, count, activate and deactivate switches, no loop end.
 const SPAWNER = (type, count, on, off) => ({
     name: "E_Make",
@@ -54,7 +57,7 @@ const barrierAll = (name, others, timeoutSec = 120) => [
     ...others.map((from) => ({ op: "waitSignal", name, from, timeoutSec })),
 ];
 
-// enemy-kill-sync: one of each way to die, plus a plain delete and an enemy off the allowlist.
+// enemy-kill-sync: one of each way to die, plus a plain delete and a Mini Freezard without a native death.
 const KILL_SYNC_ENEMIES = [
     ["real", BOKOBLIN, 0, 250],
     ["za", BOKOBLIN, 250, 250, { setId: 0x20 }],
@@ -184,7 +187,7 @@ module.exports = [
     },
     {
         name: "enemy-kill-sync",
-        description: "with Sync Enemy Deaths on, Bokoblins A kills (its own death, a puff and delete that sets the zone actor bit, a fall into the void) vanish for B and the zone actor bit is mirrored; a Tektite vanishes too; a plain delete and a Mini Freezard (not allowlisted) do not sync, and nothing echoes back",
+        description: "with Sync Enemy Deaths on, Bokoblins A kills (its own death, a puff and delete that sets the zone actor bit, a fall into the void) vanish for B and the zone actor bit is mirrored; a Tektite vanishes too; a plain delete and a Mini Freezard removed outside its native death do not sync, and nothing echoes back",
         timeoutSec: 300,
         cvars: CVARS,
         instances: [
@@ -245,6 +248,72 @@ module.exports = [
             },
         ],
     },
+    pair("enemy-bokoblin-combat",
+        "B receives A's movement, facing, attack animation, phase and active hitbox",
+        (isA, other) => [
+            ...syncOn(isA),
+            ...(isA ? [{ op: "setRoomOption", name: "syncEnemyCombat" }] : []),
+            { op: "waitRoomOption", name: "syncEnemyCombat", timeoutSec: 30 },
+            ...spawnAndSettle([["boko", BOKOBLIN, 0, 250]]),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...barrier("combat-ready", other),
+            ...(isA ? [
+                { op: "wait", frames: 10 },
+                { op: "startBokoblinAttack", tag: "boko" },
+                { op: "waitSignal", name: "swing-seen", from: other },
+            ] : [
+                { op: "expectBokoblinAttack", tag: "boko" },
+                { op: "signal", name: "swing-seen" },
+            ]),
+        ]),
+    pair("enemy-freezard-native-death",
+        "each teammate shares a hit and a native Mini Freezard defeat",
+        (isA, other) => [
+            ...damageOn(isA),
+            ...spawnAndSettle([["first", FREEZARD, -200, 250], ["second", FREEZARD, 200, 250]]),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...barrier("spawned", other),
+            ...(isA ? [{ op: "damageEnemy", tag: "first", amount: 20 }] :
+                [{ op: "damageEnemy", tag: "second", amount: 20 }]),
+            health("first", 60),
+            health("second", 60),
+            { op: "expectEnemyDamage", sent: 1, received: 1, applied: 1 },
+            ...barrier("damaged", other),
+            ...(isA ? [{ op: "killEnemy", tag: "first", how: "freezard" }] : []),
+            { op: "expectEnemyGone", tag: "first" },
+            ...barrier("first-gone", other),
+            ...(!isA ? [{ op: "killEnemy", tag: "second", how: "freezard" }] : []),
+            { op: "expectEnemyGone", tag: "second" },
+            { op: "expectEnemySync", sent: 1, received: 1, applied: 1 },
+        ]),
+    pair("enemy-shell-blade-death",
+        "Shell Blade runs its native defeat on both clients and flips its room switch",
+        (isA, other) => [
+            ...syncOn(isA),
+            ...spawnAndSettle([["shell", { name: "E_SB", param: 0xffffff19, dy: 10 }, 0, 250]]),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...barrier("shell-ready", other),
+            ...(isA ? [{ op: "killEnemy", tag: "shell", how: "shellBlade" }] : []),
+            { op: "expectEnemyGone", tag: "shell" },
+            { op: "expectSwitch", no: 0x19, room: 0, timeoutSec: 15 },
+            { op: "expectEnemySync", ...(isA ? { sent: 1 } : { received: 1, applied: 1 }) },
+        ]),
+    pair("enemy-one-hit-and-shadow-insect",
+        "a rat, a Bombskit and a Shadow Insect defeated by A disappear for B; B gets the insect switch",
+        (isA, other) => [
+            ...syncOn(isA),
+            ...spawnAndSettle([["rat", RAT, -200, 250], ["bombskit", BOMBSKIT, 200, 250],
+                ["insect", SHADOW_INSECT, 0, 300]]),
+            health("rat", 1),
+            health("bombskit", 1),
+            { op: "expectSwitch", no: 0x19, room: 0, set: false, timeoutSec: 0 },
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...barrier("spawned", other),
+            ...(isA ? ["rat", "bombskit", "insect"].map((tag) => ({ op: "killEnemy", tag })) : []),
+            ...["rat", "bombskit", "insect"].map((tag) => ({ op: "expectEnemyGone", tag })),
+            ...(isA ? [] : [{ op: "expectSwitch", no: 0x19, room: 0, timeoutSec: 15 }]),
+            { op: "expectEnemySync", ...(isA ? { sent: 3, received: 0 } : { received: 3, applied: 3 }) },
+        ]),
     {
         name: "enemy-kill-scope",
         description: "a kill reaches a teammate but not a player on another team, and nobody once the owner turns Sync Enemy Deaths off",

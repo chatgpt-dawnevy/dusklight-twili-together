@@ -1,6 +1,7 @@
 // Team-scoped world packets: the gate, queue numbering, the save exchange and the layout check.
 
 #include "sync/WorldSyncState.hpp"
+#include "sync/SharedStock.hpp"
 
 #include "core/Layout.hpp"
 #include "core/Log.hpp"
@@ -209,6 +210,9 @@ void onStageSaveTableUnloaded() {
 }
 
 bool handlePacket(const std::string& type, const nlohmann::json& packet) {
+    if (type == "INVENTORY_STATE") { shared_stock::receive(packet); return true; }
+    shared_stock::capture();
+    struct RebaseStock { ~RebaseStock() { shared_stock::rebase(); } } rebaseStock;
     if (type == "SET_FLAG") {
         handleSetFlag(packet);
     } else if (type == "UNSET_FLAG") {
@@ -264,6 +268,7 @@ void tick() {
             sendUpdateWorldState();
         }
     }
+    shared_stock::tick();
     tickDungeonItemTracking();
     tickCollectRewards();
     flushPickups();
@@ -277,6 +282,7 @@ void endOfUpdate() {
 }
 
 void resetSession() {
+    shared_stock::reset();
     State& st = s_state;
     st.exchangePending = false;
     st.catchUpRequested = false;
@@ -294,6 +300,7 @@ void resetSession() {
 }
 
 void shutdown() {
+    shared_stock::reset();
     removeItemObserver();
     dropBossFightHolds();
     resetFreestanding();

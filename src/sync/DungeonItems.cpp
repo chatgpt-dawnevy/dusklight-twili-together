@@ -62,7 +62,10 @@ void tickDungeonItemTracking() {
         st.keyCountAdoptable &= ~(1u << saveTbl);
     }
     if ((keyDelta != 0 || newBits != 0) && enabled()) {
-        sendUpdateDungeonItems(saveTbl, keyDelta, newBits);
+        // The common-stock ledger owns key quantities in shared mode. In
+        // individual mode only acquisitions travel; opening a door spends ours.
+        const int sharedDelta = Session::instance().roomState().sharedStock ? 0 : std::max(0, keyDelta);
+        if (sharedDelta != 0 || newBits != 0) sendUpdateDungeonItems(saveTbl, sharedDelta, newBits);
     }
     st.dungeonBaselineKeyNum = keyNum;
     st.dungeonBaselineItems = items;
@@ -91,7 +94,8 @@ void applyUpdateDungeonItems(const nlohmann::json& packet) {
         live ? info->getMemory().getBit() : info->getSavedata().getSave(saveTbl).getBit();
     const int keyNumBefore = bit.mKeyNum;
     const uint8_t dungeonItemsBefore = bit.mDungeonItem;
-    bit.mKeyNum = static_cast<u8>(std::clamp(keyNumBefore + keyDelta, 0, 255));
+    if (!Session::instance().roomState().sharedStock)
+        bit.mKeyNum = static_cast<u8>(std::clamp(keyNumBefore + std::max(0, keyDelta), 0, 255));
     bit.mDungeonItem |= bits;
     if (live) {
         shiftDungeonItemBaseline(keyNumBefore, dungeonItemsBefore);

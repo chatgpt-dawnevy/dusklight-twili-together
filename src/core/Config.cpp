@@ -33,6 +33,7 @@ constexpr VarDef kVars[] = {
     {Var::ShareWoodenShield, "share_wooden_shield", CONFIG_VAR_BOOL, true},
     {Var::SyncEnemyDeaths, "sync_enemy_deaths", CONFIG_VAR_BOOL},
     {Var::SyncEnemyDamage, "sync_enemy_damage", CONFIG_VAR_BOOL, true},
+    {Var::SyncEnemyCombat, "sync_enemy_combat", CONFIG_VAR_BOOL, false},
     {Var::CutsceneSync, "cutscene_sync", CONFIG_VAR_BOOL, true},
     {Var::HidePlayersInCutscene, "hide_players_in_cutscene", CONFIG_VAR_BOOL},
     {Var::EnemyHealthMultiplier, "enemy_health_multiplier", CONFIG_VAR_INT, false, 100},
@@ -50,6 +51,7 @@ constexpr VarDef kVars[] = {
     {Var::PlayersWidgetOpacity, "players_widget_opacity", CONFIG_VAR_INT, false, 80},
     {Var::PlayersWidgetScale, "players_widget_scale", CONFIG_VAR_INT, false, 100},
     {Var::SharePickups, "share_pickups", CONFIG_VAR_BOOL, true},
+    {Var::SharedStock, "shared_stock", CONFIG_VAR_BOOL, false},
     {Var::ShowPlayerHealth, "show_player_health", CONFIG_VAR_BOOL, true},
     {Var::SyncPushPull, "sync_push_pull", CONFIG_VAR_BOOL, true},
 #if TWILI_ENABLE_AUTOTEST

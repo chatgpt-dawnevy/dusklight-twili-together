@@ -5,6 +5,7 @@
 #include "core/Log.hpp"
 #include "core/SaveGate.hpp"
 #include "enemy/EnemyCount.hpp"
+#include "enemy/EnemyCombat.hpp"
 #include "enemy/EnemyDamage.hpp"
 #include "enemy/EnemyScaling.hpp"
 #include "enemy/EnemySync.hpp"
@@ -93,6 +94,7 @@ void Session::resetSessionState() {
     mHorseStateSent = false;
     sync::resetSession();
     team_game::resetSession();
+    enemy_combat::reset();
     enemy_sync::resetSession();
     enemy_damage::resetSession();
     story::resetSession();
@@ -242,6 +244,7 @@ void Session::update() {
     // Connected or not: a stage change already under way is seen through.
     enemy_sync::tick();
     enemy_damage::tick();
+    enemy_combat::tick();
     teleport::tick();
     boss::tick();
     story::tick();
@@ -310,6 +313,7 @@ void Session::onMessage(const nlohmann::json& packet) {
     } else if (team_game::handlePacket(type, packet)) {
     } else if (teleport::handlePacket(type, packet)) {
     } else if (enemy_sync::handlePacket(type, packet)) {
+    } else if (enemy_combat::handlePacket(type, packet)) {
     } else if (enemy_damage::handlePacket(type, packet)) {
     } else if (story::handlePacket(type, packet)) {
     } else if (pvp::handlePacket(type, packet)) {
