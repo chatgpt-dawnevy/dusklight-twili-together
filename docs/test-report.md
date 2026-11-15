@@ -21,3 +21,16 @@ contains both scripts, results, stderr and the relay log. The runtime lacks
 result. Command: `node tools/autotest/run.js --exe <dusklight> enemy-bokoblin-combat`.
 
 Earlier evidence and the Blizzeta failure are indexed in [audit.md](audit.md).
+
+## 2026-11-16 — Authority handoff after disconnect
+
+Same Linux runtime and pinned SDK as above. The `enemy-combat-authority-reconnect`
+scenario passed on both clients with isolated saves and a localhost relay.
+A disconnected, B inherited room ownership without disabling combat sync,
+and A rejoined with a new client ID. A then observed B's Bokoblin swing,
+including position, facing, animation and collision activation. The test injects
+the attack into B's local actor. It does not verify recovery of a shared health state.
+
+Local evidence: `tests-coop/authority-results/20261116-001548/enemy-combat-authority-reconnect/`.
+The relay logged one missed heartbeat before the scripted disconnect and successfully
+reconnected A. WAN and Windows gameplay remain untested.

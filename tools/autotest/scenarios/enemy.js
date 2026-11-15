@@ -266,6 +266,32 @@ module.exports = [
                 { op: "signal", name: "swing-seen" },
             ]),
         ]),
+    pair("enemy-combat-authority-reconnect",
+        "the first authority leaves and rejoins; the remaining peer keeps combat enabled and its attack replicates",
+        (isA, other) => [
+            ...syncOn(isA),
+            ...(isA ? [{ op: "setRoomOption", name: "syncEnemyCombat" }] : []),
+            { op: "waitRoomOption", name: "syncEnemyCombat", timeoutSec: 30 },
+            ...spawnAndSettle([["boko", BOKOBLIN, 0, 250]]),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...barrier("original-authority-ready", other),
+            ...(isA ? [
+                { op: "disconnect" },
+                { op: "wait", sec: 4 },
+                ...connect,
+            ] : [
+                { op: "wait", sec: 2 },
+                { op: "expectPeers", count: 0 },
+            ]),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            { op: "waitRoomOption", name: "syncNPCs", timeoutSec: 10 },
+            { op: "waitRoomOption", name: "syncEnemyCombat", timeoutSec: 10 },
+            ...barrier("new-authority-ready", other),
+            ...(isA ? [{ op: "expectBokoblinAttack", tag: "boko" }] : [
+                { op: "wait", frames: 10 },
+                { op: "startBokoblinAttack", tag: "boko" },
+            ]),
+        ]),
     pair("enemy-freezard-native-death",
         "each teammate shares a hit and a native Mini Freezard defeat",
         (isA, other) => [

@@ -80,6 +80,13 @@ void Session::handleUpdateRoomState(const nlohmann::json& packet) {
     if (mRoomState.sharedStock != previousSharedStock) shared_stock::reset();
     if (previousOwner != 0 && previousOwner != mRoomState.ownerClientId && isRoomOwner()) {
         config::setBool(config::Var::SharedStock, mRoomState.sharedStock);
+        // Ownership can change during a fight. Adopt the live combat options
+        // before our next settings push, so local defaults do not disable sync.
+        config::setBool(config::Var::SyncEnemyDeaths, mRoomState.syncNPCs);
+        config::setBool(config::Var::SyncEnemyDamage, mRoomState.syncEnemyDamage);
+        config::setBool(config::Var::SyncEnemyCombat, mRoomState.syncEnemyCombat);
+        config::setInt(config::Var::EnemyHealthMultiplier, mRoomState.enemyHealthMultiplier);
+        config::setInt(config::Var::EnemyCountMultiplier, mRoomState.enemyCountMultiplier);
     }
     if (mRoomState.ownerClientId != previousOwner) {
         TwiliLog.info("[session] room owner is now client {}{}", mRoomState.ownerClientId,
