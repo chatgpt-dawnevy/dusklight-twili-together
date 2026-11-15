@@ -178,6 +178,7 @@ function packetSummary(packet) {
 }
 
 let nextClientId = 1;
+let nextCombatSequence = 1;
 
 /**
  * @typedef {{ conn: any, clientId: number, roomId: string, sessionKey: string, name: string,
@@ -1212,7 +1213,7 @@ function handlePacket(client, packet) {
         if (peers.some((peer) => peer.clientId < client.clientId)) return;
         const combat = { type: packet.type, v: 1, clientId: client.clientId, teamId: client.teamId,
             senderSessionKey: client.sessionKey, protocolVersion: client.protocolVersion, addToQueue: false,
-            stageName: client.stageName, layerNo: client.layerNo, roomNo: client.roomNo, states: packet.states };
+            sequence: nextCombatSequence++, stageName: client.stageName, layerNo: client.layerNo, roomNo: client.roomNo, states: packet.states };
         for (const peer of peers) {
             if (peer !== client) send(peer, combat);
         }

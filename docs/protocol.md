@@ -319,3 +319,17 @@ and attack state. Fyrus snapshots instead carry the cumulative knockdown count w
 he is in his native down action. Deku Toad snapshots carry the active bomb stun state. The relay accepts snapshots from the lowest client ID on the same team
 and game in the same stage, room, and layer. Snapshots are transient and never replayed.
 Requires both `syncNPCs` and `syncEnemyCombat`.
+
+
+### Combat snapshot sequencing
+
+The relay assigns a process-wide increasing `sequence` to each accepted
+`ENEMY_COMBAT` message. Only the elected sender can cause a sequence to be issued.
+The relay discards any client-provided value and all recipients get the same
+number. Receivers keep a high watermark for the connection across room changes
+and authority transfers, dropping duplicates and older snapshots. Reconnecting
+resets this watermark. Version 1 peers can ignore the extra field. Updated
+clients accept packets without a sequence until the first numbered snapshot.
+
+This number orders delivered snapshots. It is independent of spawn generation,
+sender input deduplication and authority leases.
