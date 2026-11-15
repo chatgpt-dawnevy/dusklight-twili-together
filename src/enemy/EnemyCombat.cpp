@@ -64,6 +64,7 @@ std::unordered_set<fpc_ProcID> s_replicas;
 Location s_location;
 int s_room = -1;
 uint32_t s_authority = 0;
+uint64_t s_lastAcceptedSequence = 0;
 Clock::time_point s_lastSend{};
 
 // daE_OC_c actions with self-contained combat behavior. Talk, scripted encounters
@@ -179,6 +180,7 @@ void reset() {
     s_local.clear();
     s_remote.clear();
     s_authority = 0;
+    s_lastAcceptedSequence = 0;
     s_room = -1;
     s_location = {};
     s_lastSend = {};
@@ -244,6 +246,17 @@ bool handlePacket(const std::string& type, const Json& packet) {
     }
     const auto states = packet.find("states");
     if (states == packet.end() || !states->is_array() || states->size() > kBatchSize) return true;
+    // Relay numbers are global to the connection, even across room changes.
+    // Keep accepting older relays until a numbered snapshot has arrived.
+    const auto sequence = packet.find("sequence");
+    if (sequence != packet.end()) {
+        if (!sequence->is_number_unsigned()) return true;
+        const auto value = sequence->get<uint64_t>();
+        if (value <= s_lastAcceptedSequence) return true;
+        s_lastAcceptedSequence = value;
+    } else if (s_lastAcceptedSequence != 0) {
+        return true;
+    }
     for (const auto& item : *states) {
         Snapshot state;
         if (!parse(item, state)) continue;
