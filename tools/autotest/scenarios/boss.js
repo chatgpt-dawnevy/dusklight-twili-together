@@ -319,6 +319,51 @@ module.exports = [
 ];
 
 module.exports.push(...["A", "B"].map(killer => ({
+    name: `boss-argorok-shared-${killer.toLowerCase()}`,
+    description: `${killer} lands Argorok's final weak-point hit and both copies play the native ending`,
+    tags: ["boss-fight"],
+    timeoutSec: 350,
+    cvars: [...COMMON_CVARS, "game.infiniteHearts=1"],
+    instances: ["A", "B"].map(name => ({
+        name,
+        start: alive("cityBoss", 50, 3),
+        launchDelayMs: name === "A" ? 6000 : 1500,
+        steps: [
+            ...connect,
+            at("D_MN07A"),
+            { op: "prepareArgorokVulnerable" },
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...(name === "A" ? [{ op: "setRoomOption", name: "syncNPCs" }] : []),
+            { op: "waitRoomOption", name: "syncNPCs" },
+            ...fightStart,
+            { op: "prepareArgorokVulnerable" },
+            { op: "equipSword", item: 0x29 },
+            ...barrier("argorok-ready", name === "A" ? "B" : "A", 120),
+            ...(name === killer ? [{ op: "killBoss" }] : []),
+            { op: "expectBossClear", heart: 1, warp: 1, timeoutSec: 160 },
+            { op: "expectDungeonBit", bit: BOSS_BIT },
+            { op: "expectCollect", mirror: 3 },
+            { op: "expectEnemySync", ...(name === killer ? { sent: 1 } : { received: 1, applied: 1 }) },
+            ...barrier("argorok-cleared", name === "A" ? "B" : "A", 120),
+            ...(name === killer ? [
+                { op: "findFieldItem", bit: HEART_BIT, tag: "heart" },
+                { op: "takeFieldItem", tag: "heart", timeoutSec: 60 },
+            ] : []),
+            { op: "expectMaxLife", delta: 5, forSec: 5 },
+            { op: "expectDungeonBit", bit: LIFE_BIT },
+            ...barrier("argorok-rewarded", name === "A" ? "B" : "A", 120),
+            { op: "triggerStory", via: "bossWarp" },
+            noSave,
+            at("D_MN07"),
+            { op: "expectDungeonBit", stage: "D_MN07A", bit: BOSS_BIT },
+            ...barrier("argorok-exited", name === "A" ? "B" : "A", 120),
+            { op: "expectMaxLife", delta: 5, forSec: 5 },
+            { op: "quit" },
+        ],
+    })),
+})));
+
+module.exports.push(...["A", "B"].map(killer => ({
     name: `boss-death-sword-shared-${killer.toLowerCase()}`,
     description: `${killer} starts Death Sword's native defeat; both clients complete the scene`,
     cvars: COMMON_CVARS,

@@ -17,6 +17,7 @@
 
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_vt.h"
+#include "d/actor/d_a_b_dr.h"
 #include "d/actor/d_a_b_bq.h"
 #include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_gob.h"
@@ -327,6 +328,14 @@ std::optional<bool> killBoss(StepContext& ctx) {
         fm->health = 0;
         fm->mAction = kFmActionEnd;
         fm->mMode = 0;
+    } else if (how == "real" && profile == fpcNm_B_DR_e) {
+        auto& dragon = *static_cast<daB_DR_c*>(b);
+        dragon.health = 1;
+        dragon.mActionMode = 3;  // ACTION_WEEK_HIT
+        dragon.mMoveMode = 0;
+        dragon.field_0x7d0 = 0;
+        // The next native weak-point hit is lethal with the Master Sword.
+        dragon.onCutDownHitFlg();
     } else if (how == "real" && profile == fpcNm_E_VT_e) {
         auto& sword = *static_cast<daE_VA_c*>(b);
         sword.field_0x1381 = 1;
@@ -416,6 +425,24 @@ std::optional<bool> bossSteps(const std::string& op, StepContext& ctx) {
     }
 
     // Our own fight runs (value) and, for true, its intro is over (pressA for its text).
+    if (op == "prepareArgorokVulnerable") {
+        auto* actor = liveBoss();
+        if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_B_DR_e) {
+            if (ctx.seconds > ctx.timeout(40.0)) ctx.fail("Argorok is not ready in the arena");
+            return false;
+        }
+        // Match the native second-phase flight setup. Leave the ending and its child to game code.
+        auto& dragon = *static_cast<daB_DR_c*>(actor);
+        // A stationary fixture can miss revolutionMove's native turn divisor initialization.
+        if (dragon.field_0x750 == 0) dragon.field_0x750 = 200;
+        if (dComIfGp_event_runCheck()) return false;
+        dragon.arg0 = 1;
+        dragon.field_0x7d1 = 2;
+        dragon.mBreakPartsNo = 3;
+        dragon.setActionMode(1, 0);  // ACTION_FLY_WAIT
+        return true;
+    }
+
     if (op == "prepareDangoro") {
         auto* actor = liveBoss();
         if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_E_GOB_e) {

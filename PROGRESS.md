@@ -141,3 +141,25 @@
   `tests-coop/enemy-results/20261116-201404/`.
 - Prochaine action : déclencher et vérifier la fin native d’Argorok,
   avec son acteur de scène, le conteneur et la sortie.
+- PR #14 fusionnée par squash (`7e91335`).
+- Branche `feature/argorok-native-defeat` : le coup final repéré sur
+  Argorok déclenche chez le partenaire la routine de frappe sur son
+  point faible. Le jeu crée l’acteur de fin B_DRE et applique les
+  drapeaux de victoire. Le premier essai a rencontré une division par
+  zéro dans le vol natif de la sauvegarde de test stationnaire. La
+  sauvegarde instrumentée initialise son paramètre de virage et place
+  le boss en deuxième phase. Le scénario A vainqueur a confirmé sous
+  Linux un conteneur de cœur et une sortie pour chaque client
+  (`tests-coop/boss-results/20261116-202036/`). Les deux directions,
+  l’éclat de miroir, le cœur partagé et l’utilisation de la sortie
+  sont en cours de validation sans affichage visible.
+- Validation étendue avec A vainqueur réussie sur deux clients Linux.
+  Chaque partie a reçu l’éclat de miroir et un seul cœur supplémentaire
+  après un seul ramassage. Les deux joueurs sont sortis vers
+  `D_MN07`, salle 0, entrée 4, avec les drapeaux de victoire conservés.
+  Les 128 tests du relais et le test de l’affichage isolé passent.
+  Le scénario inverse est également réussi.
+  Preuves : `tests-coop/boss-results/20261116-202304/`.
+- Prochaine action : synchroniser les deux ruptures d’armure d’Argorok
+  avec les routines natives et vérifier que le coéquipier peut atteindre
+  la phase vulnérable sans répéter la même manœuvre.
