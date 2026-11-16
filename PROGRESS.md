@@ -158,4 +158,8 @@
   après un seul ramassage. Les deux joueurs sont sortis vers
   `D_MN07`, salle 0, entrée 4, avec les drapeaux de victoire conservés.
   Les 128 tests du relais et le test de l’affichage isolé passent.
-  Le scénario inverse est en cours dans `tests-coop/boss-results/20261116-202304/`.
+  Le scénario inverse est également réussi.
+  Preuves : `tests-coop/boss-results/20261116-202304/`.
+- Prochaine action : synchroniser les deux ruptures d’armure d’Argorok
+  avec les routines natives et vérifier que le coéquipier peut atteindre
+  la phase vulnérable sans répéter la même manœuvre.
