@@ -122,6 +122,7 @@ public:
     // dSv_info_c::getSave / dStage_Delete.
     void onStageSaveTableLoaded(int saveTblNo);
     void onStageSaveTableUnloaded();
+    uint32_t enemyZoneEpoch() const { return mEnemyZoneEpoch; }
     int currentSaveTblNo() const { return mCurrentSaveTblNo; }
     // The stage and layer we last reported: where the server routes our presence.
     const char* reportedStageName() const { return mLastStageName; }
@@ -209,6 +210,8 @@ private:
     int8_t mLastLayerNo = -127;
     int8_t mLastRoomNo = -127;
     bool mLastSaveLoaded = false;
+    uint32_t mEnemyZoneEpoch = 1;
+    uint32_t mAdvertisedEnemyZoneEpoch = 0;
     int mCurrentSaveTblNo = -1;
     int mLastSaveTblNo = -2;
     std::array<int, 3> mSentColor{-1, -1, -1};

@@ -848,6 +848,27 @@ std::optional<bool> enemySteps(const std::string& op, StepContext& ctx) {
         return expectEnemyDamage(ctx);
     }
 
+    if (op == "deliverDefeatForZoneTest") {
+        const auto* key = enemy_sync::trackedKey(taggedId(ctx.step));
+        const auto& session = Session::instance();
+        const auto location = enemy_sync::detail::currentLocation();
+        for (const auto& [id, client] : session.clients()) {
+            if (key == nullptr || client.self || !session.isTeammate(client)) continue;
+            const auto epoch = session.enemyZoneEpoch() - (ctx.step.value("stale", false) ? 1u : 0u);
+            const nlohmann::json packet = {
+                {"type", "ENEMY_DEFEATED"}, {"v", 2}, {"clientId", id},
+                {"teamId", session.selfTeamId()}, {"protocolVersion", Session::kProtocolVersion},
+                {"stageName", location.stage.data()}, {"layerNo", location.layer},
+                {"targetEnemyZoneEpoch", epoch},
+                {"kills", nlohmann::json::array({enemy_sync::detail::keyJson(*key)})},
+            };
+            enemy_sync::handlePacket("ENEMY_DEFEATED", packet);
+            return true;
+        }
+        ctx.fail("deliverDefeatForZoneTest: need a tracked enemy and a teammate");
+        return false;
+    }
+
     if (op == "holdRemoteDefeat") {
         enemy_sync::holdRemoteDefeatForTest(ctx.step.value("on", true));
         return true;

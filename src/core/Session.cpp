@@ -88,6 +88,7 @@ void Session::resetSessionState() {
     mLastRoomNo = -127;
     mLastSaveTblNo = -2;
     mLastSaveLoaded = false;
+    mAdvertisedEnemyZoneEpoch = 0;
     mRoomState = RoomState{};
     mVersionMismatchLogged.clear();
     // The server knows nothing of our horse in a new session.

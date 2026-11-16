@@ -131,6 +131,12 @@ bool detail::acceptFromTeammate(const nlohmann::json& packet, int version) {
     {
         return false;
     }
+    const auto targetEpoch = packet.find("targetEnemyZoneEpoch");
+    if (targetEpoch != packet.end() &&
+        (!targetEpoch->is_number_unsigned() || targetEpoch->get<uint64_t>() != session.enemyZoneEpoch()))
+    {
+        return false;
+    }
     // Checked again against where we are now: we may have moved on meanwhile.
     const char* stage = dComIfGp_getStartStageName();
     const std::string pStage = packet.value("stageName", std::string{});

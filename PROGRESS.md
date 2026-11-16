@@ -48,3 +48,10 @@
 - Prochaine action : définir une génération partagée de zone au relais et
   la vérifier à la réception des coups et des morts. La liaison locale ne
   protège pas contre un paquet reçu pour la première fois après rechargement.
+- PR #8 fusionnée dans `main` (`e8360a7`) après les scénarios de remplacement
+  et rat/Bombskit/insecte d'ombre, réussis par les deux clients Linux.
+- Branche `feature/enemy-zone-delivery` : le relais marque les paquets par
+  génération annoncée du destinataire. Les files locales expirent au déchargement
+  de la table de sauvegarde. Les tests ciblés du relais et la compilation Linux
+  ont réussi. La réception en jeu et la régression Bokoblin sont en cours.
+  Cette étape ne traite pas un événement ancien reçu tardivement par le relais.

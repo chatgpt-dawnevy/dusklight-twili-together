@@ -139,6 +139,7 @@ void Session::onStageSaveTableLoaded(int saveTblNo) {
 
 // A reload of the same stage and layer (a void-out) drops the old positions here.
 void Session::onStageSaveTableUnloaded() {
+    ++mEnemyZoneEpoch;
     mCurrentSaveTblNo = -1;
     sync::onStageSaveTableUnloaded();
     forgetRemotePositions(mClients);
@@ -160,7 +161,7 @@ void Session::tickStageTracking() {
         saveTblNo = mCurrentSaveTblNo;
     }
 
-    if (mLastSaveLoaded == saveLoaded &&
+    if (mAdvertisedEnemyZoneEpoch == mEnemyZoneEpoch && mLastSaveLoaded == saveLoaded &&
         std::strncmp(mLastStageName, stageName, sizeof(mLastStageName)) == 0 &&
         mLastLayerNo == layerNo &&
         mLastRoomNo == roomNo &&
@@ -186,6 +187,7 @@ void Session::tickStageTracking() {
     mLastRoomNo = roomNo;
     mLastSaveTblNo = saveTblNo;
     mLastSaveLoaded = saveLoaded;
+    mAdvertisedEnemyZoneEpoch = mEnemyZoneEpoch;
     TwiliLog.info("[session] stage={} layer={} room={} saveTbl={} saveLoaded={}",
                  stageName, layerNo, roomNo, saveTblNo, saveLoaded);
     send({
@@ -195,6 +197,7 @@ void Session::tickStageTracking() {
         {"roomNo", static_cast<int>(roomNo)},
         {"saveTblNo", saveTblNo},
         {"isSaveLoaded", saveLoaded},
+        {"enemyZoneEpoch", mEnemyZoneEpoch},
     });
     syncSelfRow();
 }

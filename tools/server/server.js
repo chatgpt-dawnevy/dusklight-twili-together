@@ -356,6 +356,8 @@ function broadcastPresence(room, sender, packet) {
 
 function broadcastTeamPresence(room, sender, packet) {
     if (!sender.online || !sender.isSaveLoaded) return;
+    const enemyEvent = packet.type === "ENEMY_DAMAGE" || packet.type === "ENEMY_DEFEATED";
+    if (enemyEvent) delete packet.targetEnemyZoneEpoch;
     const msg = JSON.stringify(packet);
     for (const [id, c] of room.clients) {
         if (
@@ -369,7 +371,9 @@ function broadcastTeamPresence(room, sender, packet) {
             c.layerNo === sender.layerNo &&
             c.protocolVersion === sender.protocolVersion
         ) {
-            c.conn.send(msg);
+            const delivery = enemyEvent && c.enemyZoneEpoch !== 0 ?
+                JSON.stringify({ ...packet, targetEnemyZoneEpoch: c.enemyZoneEpoch }) : msg;
+            c.conn.send(delivery);
         }
     }
 }
@@ -438,6 +442,10 @@ function updateCachedClientState(client, packet) {
     if ("color" in packet) client.color = asColor(packet.color, client.color);
     if ("online" in packet) client.online = packet.online === true;
     if ("isSaveLoaded" in packet) client.isSaveLoaded = packet.isSaveLoaded === true;
+    if (Number.isSafeInteger(packet.enemyZoneEpoch) && packet.enemyZoneEpoch > client.enemyZoneEpoch &&
+        packet.enemyZoneEpoch <= 0xffffffff) {
+        client.enemyZoneEpoch = packet.enemyZoneEpoch;
+    }
     // The next save may predate the team's progress, so it has to catch up again.
     if (!client.isSaveLoaded) client.caughtUp = false;
     if ("stageName" in packet) client.stageName = asString(packet.stageName, "", 7);
@@ -860,6 +868,7 @@ function handleHandshake(conn, packet) {
         isSaveLoaded: false,
         caughtUp: false,
         lastCombatSourceSequence: 0,
+        enemyZoneEpoch: 0,
         stageName: "",
         layerNo: 0,
         roomNo: 0,
@@ -1223,7 +1232,10 @@ function handlePacket(client, packet) {
             senderSessionKey: client.sessionKey, protocolVersion: client.protocolVersion, addToQueue: false,
             sequence: nextCombatSequence++, stageName: client.stageName, layerNo: client.layerNo, roomNo: client.roomNo, states: packet.states };
         for (const peer of peers) {
-            if (peer !== client) send(peer, combat);
+            if (peer !== client) {
+                send(peer, peer.enemyZoneEpoch === 0 ? combat :
+                    { ...combat, targetEnemyZoneEpoch: peer.enemyZoneEpoch });
+            }
         }
         return;
     }

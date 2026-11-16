@@ -365,6 +365,22 @@ module.exports = [
             { op: "expectSwitch", no: 0x1a, room: 0, timeoutSec: 15 },
             { op: "expectEnemySync", sent: 1, received: 1, applied: 1 },
         ]),
+    pair("enemy-stale-zone-delivery",
+        "the same defeat is ignored for an old stage load and accepted for the current one",
+        (isA, other) => [
+            ...syncOn(isA),
+            ...spawnAndSettle([["boko", BOKOBLIN, 0, 250]]),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...barrier("zone-ready", other),
+            ...(!isA ? [
+                { op: "deliverDefeatForZoneTest", tag: "boko", stale: true },
+                { op: "expectEnemySync", received: 0, applied: 0, timeoutSec: 0 },
+                { op: "expectEnemyHealth", tag: "boko", timeoutSec: 0 },
+                { op: "deliverDefeatForZoneTest", tag: "boko" },
+                { op: "expectEnemyGone", tag: "boko" },
+                { op: "expectEnemySync", received: 1, applied: 1 },
+            ] : []),
+        ]),
     pair("enemy-deferred-defeat-replaced-actor",
         "a deferred defeat is discarded when its actor is replaced at the same spawn",
         (isA, other) => [
