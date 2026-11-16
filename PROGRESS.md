@@ -62,3 +62,8 @@
 - Prochaine action : associer le producteur de l'événement à une génération du
   combat attribuée par le relais, puis tester un coup ancien reçu après le
   rechargement. Vérifier la reprise des PV avant d'étendre aux boss.
+- PR #9 fusionnée par **Squash and merge** après réussite des 127 tests du relais
+  et des deux scénarios Linux de réception et de combat Bokoblin.
+- La branche suivante marque la génération côté émetteur. Le test du relais
+  vérifie qu'un paquet lié à son ancienne génération est refusé après annonce
+  du chargement suivant. La compilation et les scénarios en jeu sont en cours.

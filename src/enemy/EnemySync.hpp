@@ -91,9 +91,11 @@ namespace detail {
 struct Location {
     std::array<char, 8> stage{};
     int layer = -128;
+    uint32_t loadEpoch = 0;
 
     bool matches(const Location& other) const {
-        return stage[0] != '\0' && stage == other.stage && layer == other.layer;
+        return stage[0] != '\0' && stage == other.stage && layer == other.layer &&
+               loadEpoch == other.loadEpoch;
     }
 };
 Location currentLocation();

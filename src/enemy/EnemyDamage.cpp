@@ -61,7 +61,6 @@ struct Pending {
     Hit hit;
     enemy_sync::detail::Location location;
     Clock::time_point at;
-    uint32_t zoneEpoch;
 };
 
 std::unordered_map<fpc_ProcID, Rec> s_recs;
@@ -175,7 +174,7 @@ void flush() {
             {
                 batch[n++] = s_outbox[i++].hit;
             }
-            if (detail::sendHits(first.location.stage.data(), first.location.layer, batch, n)) {
+            if (first.location.loadEpoch == Session::instance().enemyZoneEpoch() && detail::sendHits(first.location.stage.data(), first.location.layer, batch, n)) {
                 s_stats.sent += static_cast<uint32_t>(n);
             }
         }
@@ -362,8 +361,7 @@ void detail::queueRemote(const Hit& hit) {
         s_pending.erase(s_pending.begin());
         ++s_stats.dropped;
     }
-    s_pending.push_back({hit, enemy_sync::detail::currentLocation(), Clock::now(),
-        Session::instance().enemyZoneEpoch()});
+    s_pending.push_back({hit, enemy_sync::detail::currentLocation(), Clock::now()});
 }
 
 void tick() {
@@ -377,7 +375,7 @@ void tick() {
     const auto now = Clock::now();
     const auto current = enemy_sync::detail::currentLocation();
     for (auto it = s_pending.begin(); it != s_pending.end();) {
-        if (it->zoneEpoch != Session::instance().enemyZoneEpoch() || !it->location.matches(current)) {
+        if (!it->location.matches(current)) {
             ++s_stats.dropped;
             it = s_pending.erase(it);
         } else if (now - it->at > kPendingTtl) {

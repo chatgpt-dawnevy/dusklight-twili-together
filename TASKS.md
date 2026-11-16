@@ -7,7 +7,8 @@ Cocher un critère seulement après vérification de son périmètre complet.
 - [x] Confirmer le fork public, la base amont et le SDK épinglé. Conserver les correctifs existants et l'audit.
 - [ ] Autorité des combats : définir les générations de zone et de spawn, les baux ou transferts d'autorité,
   les checkpoints de reprise, les instantanés versionnés et la réconciliation après déconnexion.
-  Le séquencement des snapshots et la reprise d'une attaque ont des tests ciblés.
+  Le séquencement des snapshots, la reprise d'une attaque et le rejet d'une ancienne
+  génération de destinataire ont des tests ciblés. Le marquage émetteur est en validation.
 - [ ] Dégâts et vie : faire valider les coups par l'autorité, appliquer une seule fois les coups simultanés,
   réconcilier les PV, refuser les coups après une mort et préserver les réactions natives.
 - [ ] Ennemis classiques : inventorier placements, variantes et spawners. Synchroniser apparition,
@@ -27,3 +28,5 @@ Cocher un critère seulement après vérification de son périmètre complet.
 - [ ] Livraison : publier sur le fork deux fichiers .dusk x86-64 distincts du même commit, la compatibilité
   Dusklight, l'installation, la configuration du relais Internet, les preuves et les limites.
   Vérifier les conditions de redistribution et l'absence de contenu protégé dans les paquets.
+- [x] Conserver les PR et utiliser uniquement **Squash and merge** pour leur fusion.
+  Le workflow Windows/Linux et relais est manuel sur main.

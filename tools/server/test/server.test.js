@@ -418,6 +418,13 @@ test("enemy delivery uses the receiver's latest advertised stage incarnation", (
     a.send(event);
     assert.equal((await b.waitType("ENEMY_DEFEATED")).targetEnemyZoneEpoch, 4);
     assert.equal((await legacy.waitType("ENEMY_DEFEATED")).targetEnemyZoneEpoch, undefined);
+    a.enterStage("F_SP108", 0, { enemyZoneEpoch: 2 });
+    await settle();
+    a.send({ ...event, sourceEnemyZoneEpoch: 1 });
+    a.send({ ...event, sourceEnemyZoneEpoch: "2" });
+    await b.expectNone(p => p.type === "ENEMY_DEFEATED", "obsolete or mistyped sender generation");
+    a.send({ ...event, sourceEnemyZoneEpoch: 2 });
+    assert.equal((await b.waitType("ENEMY_DEFEATED")).targetEnemyZoneEpoch, 4);
     b.enterStage("F_SP108", 0, { enemyZoneEpoch: 5 });
     b.enterStage("F_SP108", 0, { enemyZoneEpoch: 4 });
     await settle();
