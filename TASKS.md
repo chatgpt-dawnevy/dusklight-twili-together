@@ -15,6 +15,8 @@ Cocher un critère seulement après vérification de son périmètre complet.
   validé sur deux clients Linux. Les dégâts simultanés restent à traiter.
 - [ ] Ennemis classiques : inventorier placements, variantes et spawners. Synchroniser apparition,
   position et orientation avec interpolation, cibles, attaques, collision, réactions et défaites.
+  Le relevé des profils placés est documenté dans PROGRESS.md. Le passage
+  à l’état de gelée des petits Chuchus a été testé sur deux clients Linux.
 - [ ] Ennemis à un PV : tester les morts natives des rats, Leevers, Bombskits, Keese d'ombre et autres
   variantes. Vérifier les générations lors d'une mort suivie d'une nouvelle apparition.
 - [ ] Crépuscule : vérifier tous les insectes, y compris les variantes de la rivière, les larmes uniques
