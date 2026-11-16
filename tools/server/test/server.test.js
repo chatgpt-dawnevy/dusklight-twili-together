@@ -404,6 +404,27 @@ test("ENEMY_DAMAGE reaches only teammates in the sender's stage and layer, stamp
     }
 }));
 
+test("enemy delivery uses the receiver's latest advertised stage incarnation", () => withServer(async (mk) => {
+    const a = mk(), b = mk(), legacy = mk();
+    await a.join({ teamId: "red" });
+    await b.join({ teamId: "red" });
+    await legacy.join({ teamId: "red" });
+    a.enterStage("F_SP108", 0, { enemyZoneEpoch: 1 });
+    b.enterStage("F_SP108", 0, { enemyZoneEpoch: 4 });
+    legacy.enterStage("F_SP108", 0);
+    await settle();
+    const event = { type: "ENEMY_DEFEATED", v: 2, stageName: "F_SP108", layerNo: 0,
+        kills: [], targetEnemyZoneEpoch: 999 };
+    a.send(event);
+    assert.equal((await b.waitType("ENEMY_DEFEATED")).targetEnemyZoneEpoch, 4);
+    assert.equal((await legacy.waitType("ENEMY_DEFEATED")).targetEnemyZoneEpoch, undefined);
+    b.enterStage("F_SP108", 0, { enemyZoneEpoch: 5 });
+    b.enterStage("F_SP108", 0, { enemyZoneEpoch: 4 });
+    await settle();
+    a.send({ ...event, type: "ENEMY_DAMAGE", hits: [] });
+    assert.equal((await b.waitType("ENEMY_DAMAGE")).targetEnemyZoneEpoch, 5);
+}));
+
 test("ENEMY_COMBAT scopes snapshots to the elected teammate in the same room", () => withServer(async (mk) => {
     const a = mk();
     const b = mk();

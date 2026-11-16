@@ -361,3 +361,16 @@ at the same placement cannot inherit a deferred defeat. The incarnation is
 local to the receiver and is never included in a packet. This protection
 does not identify a stale packet that arrives for the first time after a room
 has already reloaded. That case still requires a shared zone incarnation.
+
+### Enemy packet delivery to a loaded stage
+
+A client advertises its nonzero `enemyZoneEpoch` in `UPDATE_CLIENT_STATE`.
+It increases whenever its stage save table unloads, including a reload with
+the same stage name and layer. The relay removes any sender-supplied target
+value and stamps `targetEnemyZoneEpoch` separately for each recipient of
+`ENEMY_DAMAGE`, `ENEMY_DEFEATED` and `ENEMY_COMBAT`. A mismatch discards the
+packet. Local pending hits and defeats expire and combat snapshots are
+cleared if the stage unloads before they are used. Legacy peers without this
+field remain compatible. This identifies the load the relay addressed
+before transmission; it cannot identify an old event first received by the
+relay after the receiver has already announced its new load.

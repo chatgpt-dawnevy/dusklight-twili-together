@@ -61,6 +61,7 @@ struct Pending {
     Hit hit;
     enemy_sync::detail::Location location;
     Clock::time_point at;
+    uint32_t zoneEpoch;
 };
 
 std::unordered_map<fpc_ProcID, Rec> s_recs;
@@ -361,7 +362,8 @@ void detail::queueRemote(const Hit& hit) {
         s_pending.erase(s_pending.begin());
         ++s_stats.dropped;
     }
-    s_pending.push_back({hit, enemy_sync::detail::currentLocation(), Clock::now()});
+    s_pending.push_back({hit, enemy_sync::detail::currentLocation(), Clock::now(),
+        Session::instance().enemyZoneEpoch()});
 }
 
 void tick() {
@@ -375,7 +377,7 @@ void tick() {
     const auto now = Clock::now();
     const auto current = enemy_sync::detail::currentLocation();
     for (auto it = s_pending.begin(); it != s_pending.end();) {
-        if (!it->location.matches(current)) {
+        if (it->zoneEpoch != Session::instance().enemyZoneEpoch() || !it->location.matches(current)) {
             ++s_stats.dropped;
             it = s_pending.erase(it);
         } else if (now - it->at > kPendingTtl) {

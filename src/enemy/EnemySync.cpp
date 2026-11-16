@@ -276,6 +276,7 @@ struct Pending {
     Kill kill;
     detail::Location location;
     Clock::time_point at;
+    uint32_t zoneEpoch;
     bool deferred = false;
     uint64_t incarnation = 0;
 };
@@ -735,7 +736,7 @@ void detail::queueRemote(const Kill& kill) {
     if (s_pending.size() >= kMaxPending) {
         s_pending.erase(s_pending.begin());
     }
-    s_pending.push_back({kill, location, Clock::now()});
+    s_pending.push_back({kill, location, Clock::now(), Session::instance().enemyZoneEpoch()});
 }
 
 void tick() {
@@ -758,7 +759,7 @@ void tick() {
     }
     const detail::Location current = detail::currentLocation();
     for (auto it = s_pending.begin(); it != s_pending.end();) {
-        if (!it->location.matches(current)) {
+        if (it->zoneEpoch != session.enemyZoneEpoch() || !it->location.matches(current)) {
             ++s_stats.expired;
             it = s_pending.erase(it);
             continue;

@@ -64,6 +64,7 @@ std::unordered_set<fpc_ProcID> s_replicas;
 Location s_location;
 int s_room = -1;
 uint32_t s_authority = 0;
+uint32_t s_zoneEpoch = 0;
 uint64_t s_lastAcceptedSequence = 0;
 uint64_t s_nextSourceSequence = 1;
 Clock::time_point s_lastSend{};
@@ -110,7 +111,8 @@ uint32_t authority(const Session& session, int room) {
 }
 
 bool eligible(const daE_OC_c& actor) {
-    if (s_authority == 0 || dComIfGp_isEnableNextStage() || dComIfGp_event_runCheck()) return false;
+    if (s_zoneEpoch != Session::instance().enemyZoneEpoch() || s_authority == 0 ||
+        dComIfGp_isEnableNextStage() || dComIfGp_event_runCheck()) return false;
     const auto* player = daPy_getPlayerActorClass();
     return s_location.matches(enemy_sync::detail::currentLocation()) &&
            s_room == dStage_roomControl_c::getStayNo() && fopAcM_GetRoomNo(&actor) == s_room &&
@@ -182,6 +184,7 @@ void reset() {
     s_local.clear();
     s_remote.clear();
     s_authority = 0;
+    s_zoneEpoch = 0;
     s_lastAcceptedSequence = 0;
     s_nextSourceSequence = 1;
     s_room = -1;
@@ -199,7 +202,9 @@ void tick() {
     const auto location = enemy_sync::detail::currentLocation();
     const int room = dStage_roomControl_c::getStayNo();
     const uint32_t owner = authority(session, room);
-    if (owner != s_authority || room != s_room || !location.matches(s_location)) {
+    if (s_zoneEpoch != session.enemyZoneEpoch() || owner != s_authority ||
+        room != s_room || !location.matches(s_location)) {
+        s_zoneEpoch = session.enemyZoneEpoch();
         s_local.clear();
         s_remote.clear();
         s_lastSend = {};
@@ -239,7 +244,7 @@ void tick() {
 bool handlePacket(const std::string& type, const Json& packet) {
     if (type != "ENEMY_COMBAT") return false;
     const auto& session = Session::instance();
-    if (s_authority == 0 || s_authority == session.selfClientId() ||
+    if (s_zoneEpoch != session.enemyZoneEpoch() || s_authority == 0 || s_authority == session.selfClientId() ||
         authority(session, dStage_roomControl_c::getStayNo()) != s_authority ||
         packet.value("clientId", 0u) != s_authority || packet.value("roomNo", -1) != s_room ||
         !s_location.matches(enemy_sync::detail::currentLocation()) ||
@@ -295,7 +300,7 @@ void capture(daE_OC_c& actor) {
 void updateDekuToad(daE_DT_c& actor) {
     const auto id = fopAcM_GetID(&actor);
     const auto* key = enemy_sync::trackedKey(id);
-    if (key == nullptr || s_authority == 0 ||
+    if (key == nullptr || s_zoneEpoch != Session::instance().enemyZoneEpoch() || s_authority == 0 ||
         !s_location.matches(enemy_sync::detail::currentLocation()) ||
         key->roomNo != s_room || dStage_roomControl_c::getStayNo() != s_room ||
         dComIfGp_isEnableNextStage() || enemy_sync::isDying(id) ||
@@ -328,7 +333,7 @@ void updateDekuToad(daE_DT_c& actor) {
 void updateFyrus(e_fm_class& actor) {
     const auto id = fopAcM_GetID(&actor);
     const auto* key = enemy_sync::trackedKey(id);
-    if (key == nullptr || s_authority == 0 ||
+    if (key == nullptr || s_zoneEpoch != Session::instance().enemyZoneEpoch() || s_authority == 0 ||
         !s_location.matches(enemy_sync::detail::currentLocation()) ||
         key->roomNo != s_room || dStage_roomControl_c::getStayNo() != s_room ||
         dComIfGp_isEnableNextStage() || enemy_sync::isDying(id))

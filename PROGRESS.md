@@ -48,3 +48,17 @@
 - Prochaine action : définir une génération partagée de zone au relais et
   la vérifier à la réception des coups et des morts. La liaison locale ne
   protège pas contre un paquet reçu pour la première fois après rechargement.
+- PR #8 fusionnée dans `main` (`e8360a7`) après les scénarios de remplacement
+  et rat/Bombskit/insecte d'ombre, réussis par les deux clients Linux.
+- Branche `feature/enemy-zone-delivery` : le relais marque les paquets par
+  génération annoncée du destinataire. Les files locales expirent au déchargement
+  de la table de sauvegarde. Les tests ciblés du relais et la compilation Linux
+  ont réussi, ainsi que les 127 tests du relais. Le scénario avec deux clients
+  Linux a vérifié qu'une défaite injectée dans le gestionnaire avec une ancienne
+  génération laisse le Bokoblin vivant, puis qu'avec la génération courante la
+  même défaite s'applique. Régression réseau Bokoblin réussie sur les deux clients.
+  Preuves : `tests-coop/enemy-results/20261116-145714/`.
+  Cette étape ne traite pas un événement ancien reçu tardivement par le relais.
+- Prochaine action : associer le producteur de l'événement à une génération du
+  combat attribuée par le relais, puis tester un coup ancien reçu après le
+  rechargement. Vérifier la reprise des PV avant d'étendre aux boss.
