@@ -1554,6 +1554,7 @@ function onMessage(conn, data) {
 
     if (packet.type === "KEEPALIVE") {
         if (conn.transport === "tcp") conn.send(KEEPALIVE_MSG);
+        else if (conn.client !== null) conn.isAlive = true;
         return;
     }
 

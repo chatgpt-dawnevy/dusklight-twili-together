@@ -4,6 +4,8 @@
 
 #include <mods/svc/websocket.hpp>
 
+#include <chrono>
+
 namespace twili::net {
 
 // ws:// (localhost only) and wss:// on WebSocketService.
@@ -16,11 +18,13 @@ public:
     uint64_t handle() const override { return mHandle; }
     const char* name() const override { return "ws"; }
 
+    void tick(std::deque<TransportEvent>&) override;
     void onEvent(const mods::ws::Event& ev, std::deque<TransportEvent>& out);
 
 private:
     WebSocketHandle mHandle = 0;
     bool mOpen = false;
+    std::chrono::steady_clock::time_point mNextHeartbeat{};
 };
 
 }  // namespace twili::net

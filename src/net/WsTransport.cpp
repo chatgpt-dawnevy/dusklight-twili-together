@@ -5,6 +5,10 @@
 #include <fmt/format.h>
 
 namespace twili::net {
+namespace {
+constexpr auto kHeartbeatInterval = std::chrono::seconds(5);
+constexpr auto kHeartbeatRetry = std::chrono::milliseconds(250);
+}  // namespace
 
 WsTransport::~WsTransport() {
     close(1001, "going away");
@@ -49,10 +53,19 @@ void WsTransport::close(uint16_t code, std::string_view reason) {
     mOpen = false;
 }
 
+void WsTransport::tick(std::deque<TransportEvent>&) {
+    const auto now = std::chrono::steady_clock::now();
+    if (!mOpen || now < mNextHeartbeat) return;
+    // A text heartbeat also covers host WebSocket services that miss control-frame pongs.
+    const auto result = send(R"({"type":"KEEPALIVE"})");
+    mNextHeartbeat = now + (result == MOD_OK ? kHeartbeatInterval : kHeartbeatRetry);
+}
+
 void WsTransport::onEvent(const mods::ws::Event& ev, std::deque<TransportEvent>& out) {
     switch (ev.type) {
     case WEBSOCKET_EVENT_OPEN:
         mOpen = true;
+        mNextHeartbeat = std::chrono::steady_clock::now() + kHeartbeatInterval;
         out.push_back({TransportEvent::Type::Open, {}});
         break;
     case WEBSOCKET_EVENT_MESSAGE:
