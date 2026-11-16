@@ -187,9 +187,12 @@
   où B, sans autorité, déclenche les deux ruptures. La compilation
   Linux et les 129 tests du relais passent. Preuves dans
   `tests-coop/boss-results/20261116-203813/`. La régression dans
-  l’autre sens est en cours.
+  l’autre sens passe également sur les deux clients.
 - Les tests de stock en zones différentes passent dans les deux modes
   (`tests-coop/stock-results/20261116-203851/`). Le portail, deux clés,
   deux âmes et une bouteille sont partagés dans le scénario ciblé du
   randomizer (`tests-coop/results/20261116-203937/`). Ce scénario
   utilise le mode randomizer sans partie complète avec seed.
+- Prochaine action : donner à chaque joueur la possibilité de mettre
+  Fyrus à terre, puis vérifier le passage aux états natifs de Fyrus
+  dans les deux directions.
