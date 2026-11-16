@@ -250,7 +250,10 @@ const InPlaceDeath* findInPlace(s16 procName) {
     return nullptr;
 }
 
+uint64_t s_nextIncarnation = 1;
+
 struct Record {
+    uint64_t incarnation = 0;
     fopAc_ac_c* actor;  // valid until onActorDeleted
     SpawnKey key;
     const InPlaceDeath* inPlace = nullptr;
@@ -274,6 +277,7 @@ struct Pending {
     detail::Location location;
     Clock::time_point at;
     bool deferred = false;
+    uint64_t incarnation = 0;
 };
 
 struct Recent {
@@ -399,7 +403,7 @@ Record* live(const fopAc_ac_c* ac) {
     return ac == nullptr ? nullptr : live(fopAcM_GetID(ac));
 }
 
-enum class Apply { Done, NoMatch, Deferred };
+enum class Apply { Obsolete, Done, NoMatch, Deferred };
 
 // createDisappear's parameters, enemy id 0xFF (no item roll), queued in the enemy's layer.
 void spawnPuff(fopAc_ac_c* ac, layer_class* layer, const Kill& kill) {
@@ -454,30 +458,43 @@ void applyDeathSwitch(fopAc_ac_c* actor, const SpawnKey& key) {
     }
 }
 
-Apply tryApply(const Pending& p, const char*& why) {
+#if TWILI_ENABLE_AUTOTEST
+bool s_holdRemoteDefeat = false;
+#endif
+
+Apply tryApply(Pending& p, const char*& why) {
     const auto now = Clock::now();
     for (auto& [id, r] : s_records) {
-        if (r.reported || r.remoteRemoved || !p.location.matches(r.location) ||
+        if ((p.incarnation != 0 && p.incarnation != r.incarnation) ||
+            r.reported || r.remoteRemoved || !p.location.matches(r.location) ||
             !sameKey(r.key, p.kill.key))
         {
             continue;
         }
+        if (p.incarnation == 0) p.incarnation = r.incarnation;
         // Before the IsExecuting skip: an unconsumed kill would remove a respawned enemy.
         const bool executing = fopAcM_IsExecuting(id);
-        if (r.defeated || (!isUnset(r.deleteAt) && !executing) ||
-            (!isUnset(r.disappearAt) && now - r.disappearAt < kStillDying))
+        if (r.defeated || (!isUnset(r.disappearAt) && now - r.disappearAt < kStillDying))
         {
             // Dying by its own hand here: let it finish with its own drop, and do not report it.
             r.reported = true;
             return Apply::Done;
         }
         if (!executing) {
+            // Plain scene teardown or despawn is not a native defeat.
+            if (!isUnset(r.deleteAt)) return Apply::Obsolete;
             continue;
         }
         fopAc_ac_c* ac = r.actor;
         if (r.inPlace != nullptr && r.inPlace->isDead(ac)) {
             return Apply::Done;
         }
+#if TWILI_ENABLE_AUTOTEST
+        if (s_holdRemoteDefeat) {
+            why = "the autotest holds the defeat";
+            return Apply::Deferred;
+        }
+#endif
         why = deferReason(ac);
         if (why != nullptr) {
             return Apply::Deferred;
@@ -518,7 +535,7 @@ Apply tryApply(const Pending& p, const char*& why) {
             fopAcM_getProcNameString(ac), keyText(r.key));
         return Apply::Done;
     }
-    return Apply::NoMatch;
+    return p.incarnation != 0 ? Apply::Obsolete : Apply::NoMatch;
 }
 
 }  // namespace
@@ -589,6 +606,7 @@ void onActorCreated(fopAc_ac_c* ac) {
     {
         return;
     }
+    r.incarnation = s_nextIncarnation++;
     r.actor = ac;
     r.inPlace = findInPlace(r.key.procName);
     r.location = location;
@@ -755,6 +773,11 @@ void tick() {
         }
         const char* why = nullptr;
         switch (tryApply(*it, why)) {
+        case Apply::Obsolete:
+            ++s_stats.expired;
+            logKill("a teammate's deferred kill lost its original actor", it->kill);
+            it = s_pending.erase(it);
+            break;
         case Apply::Done:
             it = s_pending.erase(it);
             break;
@@ -771,6 +794,12 @@ void tick() {
         }
     }
 }
+
+#if TWILI_ENABLE_AUTOTEST
+void holdRemoteDefeatForTest(bool hold) {
+    s_holdRemoteDefeat = hold;
+}
+#endif
 
 void resetSession() {
     // Records stay: they mirror live actors, connected or not.

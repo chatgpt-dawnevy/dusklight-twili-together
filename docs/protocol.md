@@ -351,3 +351,13 @@ and advances across broods. The local parent process ID is never sent.
 The relay still scopes the key to stage and layer. If the entire nest
 reloads, its ordinal restarts. An authoritative zone incarnation is still
 needed to disambiguate delayed events across a complete room reload.
+
+### Deferred defeat delivery
+
+When a received defeat finds a local actor with the matching spawn key, the
+pending event binds to that actor's local incarnation. If the actor is removed
+before the defeat can be applied, the receiver discards the event. A replacement
+at the same placement cannot inherit a deferred defeat. The incarnation is
+local to the receiver and is never included in a packet. This protection
+does not identify a stale packet that arrives for the first time after a room
+has already reloaded. That case still requires a shared zone incarnation.

@@ -69,6 +69,9 @@ void flush();
 bool handlePacket(const std::string& type, const nlohmann::json& packet);
 // Applies pending remote kills.
 void tick();
+#if TWILI_ENABLE_AUTOTEST
+void holdRemoteDefeatForTest(bool hold);
+#endif
 void resetSession();
 void shutdown();
 
