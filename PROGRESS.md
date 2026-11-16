@@ -73,3 +73,17 @@
 - Prochaine action : mettre au point un point de reprise des PV du Bokoblin
   ordonné avec les dégâts fiables et tester son application après une
   reconnexion sans doubler un coup déjà reçu.
+- PR #10 fusionnée par squash (`82fd209`).
+- Branche `feature/bokoblin-health-recovery` : les instantanés d'autorité
+  réconcilient les PV non létaux d'un Bokoblin. La compilation Linux,
+  les 127 tests du relais, le test d'isolation de l'affichage et le test
+  de routage du checkpoint ont passé. Première exécution : le signal de
+  rendez-vous est parti avant l'arrivée de B. Après correction du scénario,
+  les deux clients Linux sont passés de 40 à 30 PV après reconnexion de A,
+  puis de 30 à 22 PV avec un seul message de dégâts appliqué chez A.
+  Le scénario de transfert d'autorité après reconnexion passe également.
+  Preuves : `tests-coop/enemy-results/20261116-151507/`.
+- Prochaine action : traiter l'insecte de rivière avec les acteurs
+  réellement placés, en vérifiant la cible détenue par le Kargorok et
+  l'unicité des larmes. Le compteur et les récompenses restent à vérifier
+  sur une séquence complète.

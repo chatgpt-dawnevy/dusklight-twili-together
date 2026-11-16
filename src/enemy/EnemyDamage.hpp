@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 
 class fopAc_ac_c;
@@ -54,6 +55,13 @@ struct Stats {
     uint32_t dropped = 0;
 };
 const Stats& stats();
+
+struct HealthCheckpoint {
+    int health;
+    int percent;
+};
+std::optional<HealthCheckpoint> bokoblinCheckpoint(uint32_t actorId);
+void reconcileBokoblin(fopAc_ac_c* actor, HealthCheckpoint checkpoint);
 
 // Health as shared: a helmeted Helmasaur's is what its helmet still takes.
 int sharedHealth(fopAc_ac_c* actor);
