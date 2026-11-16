@@ -320,6 +320,10 @@ he is in his native down action. Deku Toad snapshots carry the active bomb stun 
 Argorok carries the number of confirmed armor breaks (1 or 2). A matching replica
 can enter the corresponding native crash scene when its arena is ready. The second
 scene creates the native B_DRE actor and enables the vulnerable phase.
+A replica that confirms an armor break can set `phaseProposal` on one Argorok
+snapshot. The relay forwards it exclusively to the combat authority in that
+arena. The authority applies the native transition and broadcasts its own
+confirmed phase through the normal snapshot path.
 The relay accepts snapshots from the lowest client ID on the same team
 and game in the same stage, room, and layer. Snapshots are transient and never replayed.
 Requires both `syncNPCs` and `syncEnemyCombat`.

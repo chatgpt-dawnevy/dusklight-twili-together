@@ -542,6 +542,41 @@ test("ENEMY_COMBAT scopes snapshots to the elected teammate in the same room", (
     assert.equal(handedOff.sequence, 3, "relay sequence stays monotonic across handoff");
 }));
 
+test("Argorok armor proposals reach only the current combat authority", () => withServer(async (mk) => {
+    const authority = mk(), proposer = mk(), spectator = mk(), elsewhere = mk();
+    const peers = [authority, proposer, spectator, elsewhere];
+    for (const peer of peers) await peer.join({ teamId: "red" });
+    for (const peer of peers) {
+        peer.enterStage("D_MN07A", 0, { roomNo: peer === elsewhere ? 51 : 50, enemyZoneEpoch: 2 });
+    }
+    await settle();
+    authority.send({ type: "UPDATE_ROOM_STATE", state: { syncNPCs: true, syncEnemyCombat: true } });
+    await proposer.waitType("UPDATE_ROOM_STATE");
+
+    const armor = { procName: 0xf7, roomNo: 50, params: 0x95948a00, setId: 0xffff, dup: 0,
+        home: { x: 0, y: 0, z: 0 }, armorBreaks: 2 };
+    const proposal = { type: "ENEMY_COMBAT", v: 1, quiet: true, phaseProposal: true,
+        stageName: "D_MN07A", roomNo: 50, layerNo: 0, states: [armor], sourceEnemyZoneEpoch: 2 };
+    const combat = (packet) => packet.type === "ENEMY_COMBAT";
+    proposer.send({ ...proposal, sourceSequence: 10, states: [{ ...armor, procName: 510 }] });
+    proposer.send({ ...proposal, sourceSequence: 11, states: [{ ...armor, armorBreaks: 3 }] });
+    proposer.send({ ...proposal, sourceSequence: 12, states: [armor, armor] });
+    elsewhere.send({ ...proposal, sourceSequence: 1 });
+    authority.send({ ...proposal, sourceSequence: 1 });
+    await authority.expectNone(combat, "invalid phase proposals");
+    proposer.send({ ...proposal, sourceSequence: 1 });
+    const received = await authority.waitType("ENEMY_COMBAT");
+    assert.equal(received.clientId, proposer.id);
+    assert.equal(received.phaseProposal, true);
+    assert.equal(received.targetEnemyZoneEpoch, 2);
+    assert.deepEqual(received.states, [armor]);
+    await Promise.all([proposer, spectator, elsewhere].map(peer => peer.expectNone(combat, "proposal leaked")));
+
+    authority.send({ ...proposal, phaseProposal: false, sourceSequence: 1 });
+    assert.equal((await proposer.waitType("ENEMY_COMBAT")).phaseProposal, undefined);
+    assert.deepEqual((await spectator.waitType("ENEMY_COMBAT")).states, [armor]);
+}));
+
 test("queued team packets are numbered by the server, live and in the replay", () => withServer(async (mk) => {
     const a = mk();
     const b = mk();

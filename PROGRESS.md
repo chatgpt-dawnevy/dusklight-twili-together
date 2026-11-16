@@ -180,3 +180,19 @@
 - Prochaine action : permettre au coéquipier qui ne détient pas
   l’autorité de lui transmettre sa rupture d’armure et valider ce
   sens avec les deux instances Linux isolées.
+- PR #16 fusionnée par squash (`31cb0dd`).
+- Branche `feature/argorok-peer-phase`. Le coéquipier annonce sa
+  rupture à l’autorité de l’arène, qui joue la scène native et
+  publie sa propre phase. Les deux clients ont passé le scénario
+  où B, sans autorité, déclenche les deux ruptures. La compilation
+  Linux et les 129 tests du relais passent. Preuves dans
+  `tests-coop/boss-results/20261116-203813/`. La régression dans
+  l’autre sens passe également sur les deux clients.
+- Les tests de stock en zones différentes passent dans les deux modes
+  (`tests-coop/stock-results/20261116-203851/`). Le portail, deux clés,
+  deux âmes et une bouteille sont partagés dans le scénario ciblé du
+  randomizer (`tests-coop/results/20261116-203937/`). Ce scénario
+  utilise le mode randomizer sans partie complète avec seed.
+- Prochaine action : donner à chaque joueur la possibilité de mettre
+  Fyrus à terre, puis vérifier le passage aux états natifs de Fyrus
+  dans les deux directions.
