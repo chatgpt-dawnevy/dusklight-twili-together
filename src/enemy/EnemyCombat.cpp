@@ -247,7 +247,7 @@ void tick() {
     Json states = Json::array();
     const bool phaseProposal = owner != session.selfClientId();
     for (const auto& [id, state] : s_local) {
-        if (phaseProposal && state.key.procName != fpcNm_B_DR_e) continue;
+        if (phaseProposal && state.armorBreaks == 0 && state.knockdowns == 0) continue;
         if (now - state.at >= kTimeout || enemy_sync::isDying(id)) continue;
         Json item = enemy_sync::detail::keyJson(state.key);
         if (state.key.procName == fpcNm_B_DR_e) {
@@ -303,12 +303,12 @@ bool handlePacket(const std::string& type, const Json& packet) {
     }
     for (const auto& item : *states) {
         Snapshot state;
-        if (!parse(item, state) || (phaseProposal && state.armorBreaks == 0)) continue;
+        if (!parse(item, state) || (phaseProposal && state.armorBreaks == 0 && state.knockdowns == 0)) continue;
         state.at = Clock::now();
         const auto existing = std::find_if(s_remote.begin(), s_remote.end(),
             [&](const Snapshot& s) { return enemy_sync::sameKey(s.key, state.key); });
         if (existing != s_remote.end()) {
-            if (state.armorBreaks < existing->armorBreaks ||
+            if (state.armorBreaks < existing->armorBreaks || state.knockdowns < existing->knockdowns ||
                 (!state.bombStun && existing->bombStun && !existing->applied)) continue;
             state.applied = state.bombStun && existing->applied;
             *existing = state;
@@ -419,15 +419,16 @@ void updateFyrus(e_fm_class& actor) {
     {
         return;
     }
-    if (s_authority == Session::instance().selfClientId()) {
-        if (actor.mAction == kFyrusDown && actor.mDownCnt > 0) {
-            Snapshot snapshot;
-            snapshot.key = *key;
-            snapshot.knockdowns = actor.mDownCnt;
-            snapshot.at = Clock::now();
-            s_local[id] = snapshot;
-        }
-        return;
+    const auto snapshot = std::find_if(s_remote.begin(), s_remote.end(),
+        [&](const Snapshot& state) { return enemy_sync::sameKey(state.key, *key); });
+    const bool isAuthority = s_authority == Session::instance().selfClientId();
+    if (actor.mAction == kFyrusDown && actor.mDownCnt > 0 &&
+        (isAuthority || snapshot == s_remote.end() || actor.mDownCnt > snapshot->knockdowns)) {
+        Snapshot local;
+        local.key = *key;
+        local.knockdowns = actor.mDownCnt;
+        local.at = Clock::now();
+        s_local[id] = local;
     }
 
     // Do not interrupt an intro, camera sequence, or a player holding either chain.
@@ -436,8 +437,6 @@ void updateFyrus(e_fm_class& actor) {
     {
         return;
     }
-    const auto snapshot = std::find_if(s_remote.begin(), s_remote.end(),
-        [&](const Snapshot& state) { return enemy_sync::sameKey(state.key, *key); });
     if (snapshot == s_remote.end() || snapshot->knockdowns <= actor.mDownCnt ||
         Clock::now() - snapshot->at >= kTimeout)
     {
