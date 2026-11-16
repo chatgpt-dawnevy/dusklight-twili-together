@@ -18,6 +18,7 @@
 
 #include "SSystem/SComponent/c_malloc.h"
 #include "d/actor/d_a_e_fz.h"
+#include "d/actor/d_a_e_gm.h"
 #include "d/actor/d_a_e_hz.h"
 #include "d/actor/d_a_e_mm.h"
 #include "d/actor/d_a_e_oc.h"
@@ -226,6 +227,14 @@ std::optional<bool> killEnemy(StepContext& ctx) {
     }
     if (how == "shadowKeeseNative" && fopAcM_GetName(ac) == fpcNm_E_YK_e) {
         startShadowKeeseNativeDeath(*ac);
+        return true;
+    }
+    if ((how == "gohmaSword" || how == "gohmaStatue") && fopAcM_GetName(ac) == fpcNm_E_GM_e) {
+        auto& gohma = *static_cast<daE_GM_c*>(ac);
+        // Start the actor's native response after the lethal collision.
+        gohma.health = 0;
+        gohma.field_0xa74 = 1;
+        gohma.setAction(how == "gohmaSword" ? &daE_GM_c::damage : &daE_GM_c::pechanko_damage);
         return true;
     }
     if (how == "chuJelly" && fopAcM_GetName(ac) == fpcNm_E_SM2_e) {

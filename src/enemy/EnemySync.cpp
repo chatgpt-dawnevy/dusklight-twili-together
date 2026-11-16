@@ -25,6 +25,7 @@
 #include "d/actor/d_a_e_yk.h"
 #include "d/actor/d_a_e_ymb.h"
 #include "d/actor/d_a_b_dr.h"
+#include "d/actor/d_a_e_gm.h"
 #include "d/actor/d_a_e_sm2.h"
 #include "d/actor/d_a_kago.h"
 #include "d/actor/d_a_player.h"
@@ -320,6 +321,7 @@ struct Record {
     uint8_t fxSize = 10, fxType = 0;
     Clock::time_point disappearAt{}, deleteAt{};
     // Explicit mark: dies without a puff.
+    bool defeatSwitch = false;
     bool defeated = false;
     // Sent, or dying by its own hand when a teammate's kill came.
     bool reported = false;
@@ -401,6 +403,8 @@ bool isKillSyncable(s16 procName, u32 params) {
         return true;
     case fpcNm_B_DR_e:   // The main Argorok actor, excluding its part variants.
         return (params & 0xFF) == 0;
+    case fpcNm_E_GM_e:   // Placed Baby Gohma. Armogohma's core and brood run separate scripts.
+        return (params & 0xFF) == 2;
     case fpcNm_E_SM2_e: {
         const unsigned variant = params & 0xF;
         const unsigned color = (params >> 4) & 0xF;
@@ -456,7 +460,7 @@ void noteRecent(const SpawnKey& key, const detail::Location& location) {
 void report(Record& r, bool zoneActor) {
     r.reported = true;
     noteRecent(r.key, r.location);
-    s_outbox.push_back({{r.key, r.fxSize, r.fxType, zoneActor}, r.location});
+    s_outbox.push_back({{r.key, r.fxSize, r.fxType, zoneActor, r.defeatSwitch}, r.location});
     TwiliLog.info("[enemy] {} defeated ({}{})", fopAcM_getProcNameString(r.actor), keyText(r.key),
         zoneActor ? ", zone actor bit" : "");
 }
@@ -522,11 +526,13 @@ void releaseKargorokTarget(fopAc_ac_c* actor, const SpawnKey& key) {
     if (kargorok.getLockActor() == actor) kargorok.setLockActor(nullptr);
 }
 
-void applyDeathSwitch(fopAc_ac_c* actor, const SpawnKey& key) {
+void applyDeathSwitch(fopAc_ac_c* actor, const Kill& kill) {
+    const SpawnKey& key = kill.key;
     unsigned bit = 0xFF;
     if (key.procName == fpcNm_E_YM_e || key.procName == fpcNm_E_YK_e) {
         bit = key.params >> 24;
-    } else if (key.procName == fpcNm_E_GE_e || key.procName == fpcNm_E_WS_e) {
+    } else if (key.procName == fpcNm_E_GE_e || key.procName == fpcNm_E_WS_e ||
+               (key.procName == fpcNm_E_GM_e && kill.defeatSwitch)) {
         bit = (key.params >> 8) & 0xFF;
     } else if (key.procName == fpcNm_E_YG_e || key.procName == fpcNm_E_MS_e) {
         bit = (key.params >> 16) & 0xFF;
@@ -611,7 +617,7 @@ Apply tryApply(Pending& p, const char*& why) {
         }
         r.remoteRemoved = true;
         releaseKargorokTarget(ac, r.key);
-        applyDeathSwitch(ac, r.key);
+        applyDeathSwitch(ac, p.kill);
         spawnPuff(ac, layer, p.kill);
         ++s_stats.applied;
         TwiliLog.info("[enemy] removed {} ({}): defeated by a teammate",
@@ -713,6 +719,11 @@ void onDeleteRequest(const fopAc_ac_c* ac) {
             reinterpret_cast<const e_yg_class*>(ac)->mDeathFlag != 0)
         {
             r->defeated = true;
+        } else if (r->key.procName == fpcNm_E_GM_e) {
+            auto& gohma = *static_cast<daE_GM_c*>(r->actor);
+            // Both native deaths make particles directly. Only damage() sets a switch.
+            r->defeatSwitch = gohma.checkAction(&daE_GM_c::damage);
+            r->defeated = r->defeatSwitch || gohma.checkAction(&daE_GM_c::pechanko_damage);
         } else if (r->key.procName == fpcNm_E_YK_e) {
             // Its native deaths make particles directly, without a DISAPPEAR actor.
             const auto* keese = reinterpret_cast<const e_yk_class*>(ac);
