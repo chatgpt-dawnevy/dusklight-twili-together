@@ -81,6 +81,7 @@
   rendez-vous est parti avant l'arrivée de B. Après correction du scénario,
   les deux clients Linux sont passés de 40 à 30 PV après reconnexion de A,
   puis de 30 à 22 PV avec un seul message de dégâts appliqué chez A.
+  Le scénario de transfert d'autorité après reconnexion passe également.
   Preuves : `tests-coop/enemy-results/20261116-151507/`.
 - Prochaine action : traiter l'insecte de rivière avec les acteurs
   réellement placés, en vérifiant la cible détenue par le Kargorok et
