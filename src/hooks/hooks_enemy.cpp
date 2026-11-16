@@ -11,6 +11,7 @@
 
 #include "SSystem/SComponent/c_phase.h"
 #include "f_pc/f_pc_name.h"
+#include "d/actor/d_a_b_dr.h"
 #include "d/actor/d_a_e_bs.h"
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_fz.h"
@@ -29,6 +30,7 @@ DEFINE_HOOK(static_cast<s32 (*)(fopAc_ac_c*)>(&fopAcM_delete), ActorDeleteReques
 DEFINE_HOOK(static_cast<s32 (*)(fpc_ProcID)>(&fopAcM_delete), ActorDeleteRequestId);
 DEFINE_HOOK(&fopAcM_createDisappear, ActorCreateDisappear);
 DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_bs.cpp#damage_check", void(e_bs_class*), EbsDamageCheck);
+DEFINE_HOOK_SYMBOL("src/d/actor/d_a_b_dr.cpp#daB_DR_Execute", int(daB_DR_c*), ArgorokExecute);
 DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_fm.cpp#daE_FM_Execute", int(e_fm_class*), FyrusExecute);
 DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_dt.cpp#daE_DT_Execute", int(daE_DT_c*), DekuToadExecute);
 DEFINE_HOOK(&daE_OC_c::execute, EocExecute);
@@ -227,6 +229,10 @@ void onEocExecutePost(ModContext*, void* args, void*, void*) {
     if (Session::active()) enemy_combat::capture(*mods::arg<daE_OC_c*>(args, 0));
 }
 
+void onArgorokExecutePost(ModContext*, void* args, void*, void*) {
+    if (Session::active()) enemy_combat::updateArgorok(*mods::arg<daB_DR_c*>(args, 0));
+}
+
 void onDekuToadExecutePost(ModContext*, void* args, void*, void*) {
     if (Session::active()) enemy_combat::updateDekuToad(*mods::arg<daE_DT_c*>(args, 0));
 }
@@ -237,6 +243,7 @@ void onFyrusExecutePost(ModContext*, void* args, void*, void*) {
 
 ModResult installEnemy(std::string& error) {
     const ModResult results[] = {
+        addPost<ArgorokExecute>(onArgorokExecutePost, kDefault, "daB_DR_Execute", error),
         addPost<DekuToadExecute>(onDekuToadExecutePost, kDefault, "daE_DT_Execute", error),
         addPost<FyrusExecute>(onFyrusExecutePost, kDefault, "daE_FM_Execute", error),
         addPre<EocExecute>(onEocExecutePre, kDefault, "daE_OC_c::execute", error),

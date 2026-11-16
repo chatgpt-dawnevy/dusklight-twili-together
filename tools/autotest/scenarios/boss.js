@@ -318,6 +318,38 @@ module.exports = [
     ...miniBosses.map((m) => miniBossScenario(m, true)),
 ];
 
+module.exports.push({
+    name: "boss-argorok-shared-armor",
+    description: "A breaks both layers of Argorok's armor and B reaches the native vulnerable phase",
+    tags: ["boss-fight"],
+    timeoutSec: 260,
+    cvars: [...COMMON_CVARS, "game.infiniteHearts=1"],
+    instances: ["A", "B"].map(name => ({
+        name,
+        start: alive("cityBoss", 50, 3),
+        launchDelayMs: name === "A" ? 6000 : 1500,
+        steps: [
+            ...connect,
+            at("D_MN07A"),
+            { op: "prepareArgorokVulnerable", armored: true },
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...(name === "A" ? [
+                { op: "setRoomOption", name: "syncNPCs" },
+                { op: "setRoomOption", name: "syncEnemyCombat" },
+            ] : []),
+            { op: "waitRoomOption", name: "syncEnemyCombat" },
+            ...fightStart,
+            ...barrier("armor-ready", name === "A" ? "B" : "A", 120),
+            ...[1, 2].flatMap(count => [
+                ...(name === "A" ? [{ op: "startArgorokArmorBreak", count }] : []),
+                { op: "expectArgorokArmorBreak", count, timeoutSec: 150 },
+                ...barrier("armor-" + count, name === "A" ? "B" : "A", 120),
+            ]),
+            { op: "quit" },
+        ],
+    })),
+});
+
 module.exports.push(...["A", "B"].map(killer => ({
     name: `boss-argorok-shared-${killer.toLowerCase()}`,
     description: `${killer} lands Argorok's final weak-point hit and both copies play the native ending`,

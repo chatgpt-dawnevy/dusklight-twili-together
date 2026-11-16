@@ -436,11 +436,50 @@ std::optional<bool> bossSteps(const std::string& op, StepContext& ctx) {
         // A stationary fixture can miss revolutionMove's native turn divisor initialization.
         if (dragon.field_0x750 == 0) dragon.field_0x750 = 200;
         if (dComIfGp_event_runCheck()) return false;
-        dragon.arg0 = 1;
-        dragon.field_0x7d1 = 2;
-        dragon.mBreakPartsNo = 3;
-        dragon.setActionMode(1, 0);  // ACTION_FLY_WAIT
+        if (step.value("armored", false)) {
+            dragon.arg0 = 0;
+            dragon.setActionMode(0, 0);  // ACTION_WAIT
+        } else {
+            dragon.arg0 = 1;
+            dragon.field_0x7d1 = 2;
+            dragon.mBreakPartsNo = 3;
+            dragon.setActionMode(1, 0);  // ACTION_FLY_WAIT
+        }
         return true;
+    }
+
+    if (op == "startArgorokArmorBreak" || op == "expectArgorokArmorBreak") {
+        auto* actor = liveBoss();
+        const int count = step.value("count", 1);
+        if (actor != nullptr && fopAcM_GetName(actor) == fpcNm_B_DR_e) {
+            auto& dragon = *static_cast<daB_DR_c*>(actor);
+            const bool quiet = !dComIfGp_event_runCheck();
+            if (!quiet && !padBusy() && ctx.ticks % 20 == 0) {
+                pulsePad(0.0f, 0.0f, PAD_BUTTON_A, 3);
+            }
+            if (op == "expectArgorokArmorBreak" && quiet && dragon.field_0x7d1 == count &&
+                (count == 1 || dComIfGs_isZoneSwitch(2, fopAcM_GetRoomNo(actor)))) {
+                return true;
+            }
+            if (op == "startArgorokArmorBreak" && quiet && dragon.field_0x7d1 == count - 1 &&
+                dragon.mActionMode != 2 && dragon.mActionMode < 11) {
+                if (count == 1) {
+                    dragon.setActionMode(11, 10);  // First native crash scene.
+                } else {
+                    dragon.mBreakPartsNo = 2;
+                    dragon.mTailCc.OffTgSetBit();
+                    dragon.setActionMode(2, 12);  // Second native crash scene.
+                }
+                return true;
+            }
+            if (ctx.seconds > ctx.timeout(60.0)) {
+                ctx.fail(fmt::format("{}: armor {}, breaks {}, action {}/{}, quiet {}", op,
+                    dragon.field_0x7d1, dragon.mBreakPartsNo, dragon.mActionMode, dragon.mMoveMode, quiet));
+            }
+        } else if (ctx.seconds > ctx.timeout(60.0)) {
+            ctx.fail(op + ": no Argorok in the arena");
+        }
+        return false;
     }
 
     if (op == "prepareDangoro") {
