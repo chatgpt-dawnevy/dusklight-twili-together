@@ -1,14 +1,14 @@
-name: Build
+name: Validate release builds
 
 on:
-  push:
-    branches: ["*"]
-    tags: ["*"]
-  pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'
     name: Build ${{matrix.platform}}
     runs-on: ${{matrix.runner}}
     strategy:
@@ -76,6 +76,7 @@ jobs:
           if-no-files-found: error
 
   relay:
+    if: github.ref == 'refs/heads/main'
     name: Relay server tests
     runs-on: ubuntu-latest
     defaults:
