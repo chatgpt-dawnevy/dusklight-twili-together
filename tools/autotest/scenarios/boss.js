@@ -318,9 +318,9 @@ module.exports = [
     ...miniBosses.map((m) => miniBossScenario(m, true)),
 ];
 
-module.exports.push({
-    name: "boss-argorok-shared-armor",
-    description: "A breaks both layers of Argorok's armor and B reaches the native vulnerable phase",
+module.exports.push(...["A", "B"].map(initiator => ({
+    name: initiator === "A" ? "boss-argorok-shared-armor" : "boss-argorok-peer-armor",
+    description: `${initiator} breaks both layers of Argorok's armor and both reach the native vulnerable phase`,
     tags: ["boss-fight"],
     timeoutSec: 260,
     cvars: [...COMMON_CVARS, "game.infiniteHearts=1"],
@@ -341,14 +341,14 @@ module.exports.push({
             ...fightStart,
             ...barrier("armor-ready", name === "A" ? "B" : "A", 120),
             ...[1, 2].flatMap(count => [
-                ...(name === "A" ? [{ op: "startArgorokArmorBreak", count }] : []),
+                ...(name === initiator ? [{ op: "startArgorokArmorBreak", count }] : []),
                 { op: "expectArgorokArmorBreak", count, timeoutSec: 150 },
                 ...barrier("armor-" + count, name === "A" ? "B" : "A", 120),
             ]),
             { op: "quit" },
         ],
     })),
-});
+})));
 
 module.exports.push(...["A", "B"].map(killer => ({
     name: `boss-argorok-shared-${killer.toLowerCase()}`,

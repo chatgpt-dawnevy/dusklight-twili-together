@@ -187,13 +187,14 @@ bool parse(const Json& j, Snapshot& s) {
     return true;
 }
 
-void sendBatch(Session& session, Json& states) {
+void sendBatch(Session& session, Json& states, bool phaseProposal) {
     if (states.empty()) return;
     Json packet{{"type", "ENEMY_COMBAT"}, {"v", kVersion}, {"quiet", true},
                 {"stageName", s_location.stage.data()}, {"layerNo", s_location.layer},
                 {"roomNo", s_room}, {"sourceSequence", s_nextSourceSequence++},
                 {"sourceEnemyZoneEpoch", s_location.loadEpoch},
                 {"states", std::move(states)}};
+    if (phaseProposal) packet["phaseProposal"] = true;
     sync::stampPacket(packet, false);
     session.send(packet, net::Delivery::Droppable);
     states = Json::array();
@@ -237,14 +238,16 @@ void tick() {
         if (s.armorBreaks != 0) return now - s.at >= kArgorokArmorTimeout;
         return now - s.at >= (s.bombStun ? kToadStunTimeout : kTimeout);
     });
-    if (owner == 0 || owner != session.selfClientId() || now - s_lastSend < kInterval ||
+    if (owner == 0 || now - s_lastSend < kInterval ||
         !enemy_sync::detail::canSendHere(location.stage.data(), location.layer))
     {
         return;
     }
     s_lastSend = now;
     Json states = Json::array();
+    const bool phaseProposal = owner != session.selfClientId();
     for (const auto& [id, state] : s_local) {
+        if (phaseProposal && state.key.procName != fpcNm_B_DR_e) continue;
         if (now - state.at >= kTimeout || enemy_sync::isDying(id)) continue;
         Json item = enemy_sync::detail::keyJson(state.key);
         if (state.key.procName == fpcNm_B_DR_e) {
@@ -264,25 +267,29 @@ void tick() {
             }
         }
         states.push_back(std::move(item));
-        if (states.size() == kBatchSize) sendBatch(session, states);
+        if (phaseProposal || states.size() == kBatchSize) sendBatch(session, states, phaseProposal);
     }
-    sendBatch(session, states);
+    sendBatch(session, states, phaseProposal);
     s_local.clear();
 }
 
 bool handlePacket(const std::string& type, const Json& packet) {
     if (type != "ENEMY_COMBAT") return false;
     const auto& session = Session::instance();
-    if (s_zoneEpoch != session.enemyZoneEpoch() || s_authority == 0 || s_authority == session.selfClientId() ||
+    const bool phaseProposal = packet.value("phaseProposal", false);
+    const bool isAuthority = s_authority == session.selfClientId();
+    const uint32_t sender = packet.value("clientId", 0u);
+    if (s_zoneEpoch != session.enemyZoneEpoch() || s_authority == 0 || phaseProposal != isAuthority ||
         authority(session, dStage_roomControl_c::getStayNo()) != s_authority ||
-        packet.value("clientId", 0u) != s_authority || packet.value("roomNo", -1) != s_room ||
+        (!phaseProposal && sender != s_authority) || packet.value("roomNo", -1) != s_room ||
         !s_location.matches(enemy_sync::detail::currentLocation()) ||
         !enemy_sync::detail::acceptFromTeammate(packet, kVersion))
     {
         return true;
     }
     const auto states = packet.find("states");
-    if (states == packet.end() || !states->is_array() || states->size() > kBatchSize) return true;
+    if (states == packet.end() || !states->is_array() || states->size() > kBatchSize ||
+        (phaseProposal && states->size() != 1)) return true;
     // Relay numbers are global to the connection, even across room changes.
     // Keep accepting older relays until a numbered snapshot has arrived.
     const auto sequence = packet.find("sequence");
@@ -296,12 +303,13 @@ bool handlePacket(const std::string& type, const Json& packet) {
     }
     for (const auto& item : *states) {
         Snapshot state;
-        if (!parse(item, state)) continue;
+        if (!parse(item, state) || (phaseProposal && state.armorBreaks == 0)) continue;
         state.at = Clock::now();
         const auto existing = std::find_if(s_remote.begin(), s_remote.end(),
             [&](const Snapshot& s) { return enemy_sync::sameKey(s.key, state.key); });
         if (existing != s_remote.end()) {
-            if (!state.bombStun && existing->bombStun && !existing->applied) continue;
+            if (state.armorBreaks < existing->armorBreaks ||
+                (!state.bombStun && existing->bombStun && !existing->applied)) continue;
             state.applied = state.bombStun && existing->applied;
             *existing = state;
         } else if (s_remote.size() < kMaxSnapshots) {
@@ -336,25 +344,24 @@ void updateArgorok(daB_DR_c& actor) {
     {
         return;
     }
-    if (s_authority == Session::instance().selfClientId()) {
-        const bool secondCrash = actor.mBreakPartsNo == 2 &&
-            actor.mActionMode == kArgorokTailHit && actor.mMoveMode >= 13;
-        const int armorBreaks = secondCrash ? 2 : actor.field_0x7d1;
-        if (armorBreaks == 1 || armorBreaks == 2) {
-            Snapshot snapshot;
-            snapshot.key = *key;
-            snapshot.armorBreaks = armorBreaks;
-            snapshot.at = Clock::now();
-            s_local[id] = snapshot;
-        }
-        return;
+    const auto snapshot = std::find_if(s_remote.begin(), s_remote.end(),
+        [&](const Snapshot& state) { return enemy_sync::sameKey(state.key, *key); });
+    const bool secondCrash = actor.mBreakPartsNo == 2 &&
+        actor.mActionMode == kArgorokTailHit && actor.mMoveMode >= 13;
+    const int armorBreaks = secondCrash ? 2 : actor.field_0x7d1;
+    const bool isAuthority = s_authority == Session::instance().selfClientId();
+    if ((armorBreaks == 1 || armorBreaks == 2) &&
+        (isAuthority || snapshot == s_remote.end() || armorBreaks > snapshot->armorBreaks)) {
+        Snapshot local;
+        local.key = *key;
+        local.armorBreaks = armorBreaks;
+        local.at = Clock::now();
+        s_local[id] = local;
     }
     if (dComIfGp_event_runCheck() || dComIfGp_checkPlayerStatus1(0, 0x10000) ||
         actor.mActionMode >= kArgorokDamageDemo || actor.mActionMode == kArgorokTailHit) {
         return;
     }
-    const auto snapshot = std::find_if(s_remote.begin(), s_remote.end(),
-        [&](const Snapshot& state) { return enemy_sync::sameKey(state.key, *key); });
     if (snapshot == s_remote.end() || snapshot->armorBreaks <= actor.field_0x7d1 ||
         Clock::now() - snapshot->at >= kArgorokArmorTimeout) {
         return;

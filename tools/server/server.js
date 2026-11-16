@@ -27,6 +27,7 @@ const TELEPORT_MIN_INTERVAL_MS = envNumber("TT_TELEPORT_INTERVAL_MS", 1000);
 // PvP: at most one hit per attacker/victim pair per interval.
 const DAMAGE_MIN_INTERVAL_MS = envNumber("TT_DAMAGE_INTERVAL_MS", 200);
 const MAX_PVP_DAMAGE = 4; // quarter hearts per hit
+const ARGOROK_PROFILE = 0xf7;
 const PVP_KIND_COUNT = 12;
 const PVP_KNOCKBACK_COUNT = 2; // "spl": 0 light, 1 knockdown
 const DAMAGE_RESULTS = new Set(["applied", "blocked", "dropped"]);
@@ -1233,13 +1234,24 @@ function handlePacket(client, packet) {
             peer.online && peer.isSaveLoaded && peer.teamId === client.teamId &&
             peer.stageName === client.stageName && peer.layerNo === client.layerNo &&
             peer.roomNo === client.roomNo && peer.protocolVersion === client.protocolVersion && syncOk(room, peer));
-        if (peers.some((peer) => peer.clientId < client.clientId)) return;
+        const authority = peers.reduce(
+            (lowest, peer) => peer.clientId < lowest.clientId ? peer : lowest, client);
+        const phaseProposal = packet.phaseProposal === true;
+        if (phaseProposal) {
+            const state = packet.states[0];
+            if (authority === client || packet.states.length !== 1 || !state ||
+                state.procName !== ARGOROK_PROFILE || state.roomNo !== client.roomNo ||
+                (state.armorBreaks !== 1 && state.armorBreaks !== 2)) return;
+        } else if (authority !== client) {
+            return;
+        }
         if (!acceptSourceSequence(packet, client.lastCombatSourceSequence)) return;
         if ("sourceSequence" in packet) client.lastCombatSourceSequence = packet.sourceSequence;
         const combat = { type: packet.type, v: 1, clientId: client.clientId, teamId: client.teamId,
             senderSessionKey: client.sessionKey, protocolVersion: client.protocolVersion, addToQueue: false,
             sequence: nextCombatSequence++, stageName: client.stageName, layerNo: client.layerNo, roomNo: client.roomNo, states: packet.states };
-        for (const peer of peers) {
+        if (phaseProposal) combat.phaseProposal = true;
+        for (const peer of phaseProposal ? [authority] : peers) {
             if (peer !== client) {
                 send(peer, peer.enemyZoneEpoch === 0 ? combat :
                     { ...combat, targetEnemyZoneEpoch: peer.enemyZoneEpoch });
