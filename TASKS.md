@@ -8,7 +8,7 @@ Cocher un critère seulement après vérification de son périmètre complet.
 - [ ] Autorité des combats : définir les générations de zone et de spawn, les baux ou transferts d'autorité,
   les checkpoints de reprise, les instantanés versionnés et la réconciliation après déconnexion.
   Le séquencement des snapshots, la reprise d'une attaque et le rejet d'une ancienne
-  génération de destinataire ont des tests ciblés. Le marquage émetteur est en validation.
+  génération de destinataire ou d’émetteur ont des tests ciblés.
 - [ ] Dégâts et vie : faire valider les coups par l'autorité, appliquer une seule fois les coups simultanés,
   réconcilier les PV, refuser les coups après une mort et préserver les réactions natives.
 - [ ] Ennemis classiques : inventorier placements, variantes et spawners. Synchroniser apparition,
