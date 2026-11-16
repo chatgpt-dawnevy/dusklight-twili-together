@@ -374,3 +374,12 @@ cleared if the stage unloads before they are used. Legacy peers without this
 field remain compatible. This identifies the load the relay addressed
 before transmission; it cannot identify an old event first received by the
 relay after the receiver has already announced its new load.
+
+Updated senders also attach `sourceEnemyZoneEpoch`. Local actor records,
+pending work and outgoing batches carry the load in which they originated.
+The client discards obsolete batches and waits until it has announced its
+current load before sending. The relay rejects a supplied source generation
+that differs from the sender's latest advertised value. Unmarked legacy
+senders remain compatible. The two markers protect the path between a sender
+load and a receiver load. They do not assign a common encounter identity or
+decide which live enemies to reconcile across independent stage loads.

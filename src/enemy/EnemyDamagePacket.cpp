@@ -48,6 +48,7 @@ bool detail::sendHits(const char* stage, int layer, const Hit* hits, size_t coun
     }
     nlohmann::json packet = {
         {"type", "ENEMY_DAMAGE"},
+        {"sourceEnemyZoneEpoch", Session::instance().enemyZoneEpoch()},
         {"v", kVersion},
         // A fight sends several a second: kept out of the relay's log.
         {"quiet", true},

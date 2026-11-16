@@ -1209,6 +1209,13 @@ function handlePacket(client, packet) {
         return;
     }
 
+    const enemyEvent = packet.type === "ENEMY_COMBAT" || packet.type === "ENEMY_DAMAGE" ||
+        packet.type === "ENEMY_DEFEATED";
+    if (enemyEvent && "sourceEnemyZoneEpoch" in packet &&
+        (client.enemyZoneEpoch === 0 || packet.sourceEnemyZoneEpoch !== client.enemyZoneEpoch)) {
+        return;
+    }
+
     if (packet.type === "ENEMY_COMBAT") {
         if (!room.state.syncNPCs || !room.state.syncEnemyCombat || !client.online ||
             !client.isSaveLoaded || !syncOk(room, client) || client.roomNo < 0 ||

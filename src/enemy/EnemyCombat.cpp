@@ -173,6 +173,7 @@ void sendBatch(Session& session, Json& states) {
     Json packet{{"type", "ENEMY_COMBAT"}, {"v", kVersion}, {"quiet", true},
                 {"stageName", s_location.stage.data()}, {"layerNo", s_location.layer},
                 {"roomNo", s_room}, {"sourceSequence", s_nextSourceSequence++},
+                {"sourceEnemyZoneEpoch", s_location.loadEpoch},
                 {"states", std::move(states)}};
     sync::stampPacket(packet, false);
     session.send(packet, net::Delivery::Droppable);

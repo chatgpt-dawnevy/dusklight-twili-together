@@ -122,6 +122,7 @@ public:
     // dSv_info_c::getSave / dStage_Delete.
     void onStageSaveTableLoaded(int saveTblNo);
     void onStageSaveTableUnloaded();
+    bool enemyZoneAdvertised() const { return mAdvertisedEnemyZoneEpoch == mEnemyZoneEpoch; }
     uint32_t enemyZoneEpoch() const { return mEnemyZoneEpoch; }
     int currentSaveTblNo() const { return mCurrentSaveTblNo; }
     // The stage and layer we last reported: where the server routes our presence.

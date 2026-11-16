@@ -147,7 +147,7 @@ bool detail::acceptFromTeammate(const nlohmann::json& packet, int version) {
 bool detail::canSendHere(const char* stage, int layer) {
     const Session& session = Session::instance();
     // The server routes by the stage it last heard from us.
-    if (std::strncmp(stage, session.reportedStageName(), 8) != 0 ||
+    if (!session.enemyZoneAdvertised() || std::strncmp(stage, session.reportedStageName(), 8) != 0 ||
         layer != session.reportedLayerNo())
     {
         return false;
@@ -175,6 +175,7 @@ bool detail::sendDefeated(const char* stage, int layer, const Kill* kills, size_
     }
     nlohmann::json packet = {
         {"type", "ENEMY_DEFEATED"},
+        {"sourceEnemyZoneEpoch", session.enemyZoneEpoch()},
         {"v", kVersion},
         {"stageName", std::string(stage)},
         {"layerNo", layer},

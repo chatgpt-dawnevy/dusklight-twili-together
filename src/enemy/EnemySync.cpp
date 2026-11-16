@@ -276,7 +276,6 @@ struct Pending {
     Kill kill;
     detail::Location location;
     Clock::time_point at;
-    uint32_t zoneEpoch;
     bool deferred = false;
     uint64_t incarnation = 0;
 };
@@ -543,6 +542,7 @@ Apply tryApply(Pending& p, const char*& why) {
 
 detail::Location detail::currentLocation() {
     Location location{};
+    if (Session::active()) location.loadEpoch = Session::instance().enemyZoneEpoch();
     if (const char* stage = dComIfGp_getStartStageName(); stage != nullptr) {
         std::strncpy(location.stage.data(), stage, location.stage.size() - 1);
         location.layer = dComIfG_play_c::getLayerNo(0);
@@ -704,7 +704,7 @@ void flush() {
             {
                 batch[n++] = s_outbox[i++].kill;
             }
-            if (detail::sendDefeated(first.location.stage.data(), first.location.layer, batch, n)) {
+            if (first.location.loadEpoch == session.enemyZoneEpoch() && detail::sendDefeated(first.location.stage.data(), first.location.layer, batch, n)) {
                 s_stats.sent += static_cast<uint32_t>(n);
             }
         }
@@ -736,7 +736,7 @@ void detail::queueRemote(const Kill& kill) {
     if (s_pending.size() >= kMaxPending) {
         s_pending.erase(s_pending.begin());
     }
-    s_pending.push_back({kill, location, Clock::now(), Session::instance().enemyZoneEpoch()});
+    s_pending.push_back({kill, location, Clock::now()});
 }
 
 void tick() {
@@ -759,7 +759,7 @@ void tick() {
     }
     const detail::Location current = detail::currentLocation();
     for (auto it = s_pending.begin(); it != s_pending.end();) {
-        if (it->zoneEpoch != session.enemyZoneEpoch() || !it->location.matches(current)) {
+        if (!it->location.matches(current)) {
             ++s_stats.expired;
             it = s_pending.erase(it);
             continue;

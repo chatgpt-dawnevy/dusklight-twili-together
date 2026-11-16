@@ -62,3 +62,14 @@
 - Prochaine action : associer le producteur de l'événement à une génération du
   combat attribuée par le relais, puis tester un coup ancien reçu après le
   rechargement. Vérifier la reprise des PV avant d'étendre aux boss.
+- PR #9 fusionnée par **Squash and merge** après réussite des 127 tests du relais
+  et des deux scénarios Linux de réception et de combat Bokoblin.
+- La branche suivante marque la génération côté émetteur. Le test du relais
+  vérifie qu'un paquet lié à son ancienne génération est refusé après annonce
+  du chargement suivant. Compilation Linux et 127 tests du relais réussis.
+  Les deux clients Linux isolés ont réussi `enemy-leever-next-brood` et
+  `enemy-bokoblin-combat`. Preuves locales sous `tests-coop/enemy-results/`,
+  exécutions `20261116-150748` et `20261116-150927`.
+- Prochaine action : mettre au point un point de reprise des PV du Bokoblin
+  ordonné avec les dégâts fiables et tester son application après une
+  reconnexion sans doubler un coup déjà reçu.
