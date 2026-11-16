@@ -33,3 +33,8 @@
   et les deux sauvegardes reçoivent l'interrupteur. Prochain test : génération
   suivante d'un nid sans interrupteur, puis rechargement complet de la salle.
   Preuves dans `tests-coop/enemy-results/20261116-144039/enemy-leever-sibling-identity/`.
+- PR #7 fusionnée dans `main` (`15fa1bd`). Ancien workflow de builds automatiques
+  retiré. La validation Windows/Linux et relais est déclenchée manuellement sur main.
+- `enemy-leever-next-brood` passe sur les deux clients Linux isolés. La première
+  vague utilise 0xC000 et la suivante 0xC001. A déclenche la première défaite,
+  B la seconde. Preuves dans `tests-coop/enemy-results/20261116-144809/`.
