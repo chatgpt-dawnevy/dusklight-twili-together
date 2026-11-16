@@ -38,3 +38,13 @@
 - `enemy-leever-next-brood` passe sur les deux clients Linux isolés. La première
   vague utilise 0xC000 et la suivante 0xC001. A déclenche la première défaite,
   B la seconde. Preuves dans `tests-coop/enemy-results/20261116-144809/`.
+- PR #6 intégrée à `main` (`9c6dd63`). Le premier test de mort différée a
+  révélé qu'une suppression simple était classée comme une défaite consommée.
+  Le correctif lie l'événement différé à l'incarnation locale qu'il a trouvée.
+  Le scénario `enemy-deferred-defeat-replaced-actor` passe chez A et B sous
+  Linux : le remplacement au même placement survit, l'événement expire et
+  aucune défaite n'est appliquée. Preuves dans
+  `tests-coop/enemy-results/20261116-145153/enemy-deferred-defeat-replaced-actor/`.
+- Prochaine action : définir une génération partagée de zone au relais et
+  la vérifier à la réception des coups et des morts. La liaison locale ne
+  protège pas contre un paquet reçu pour la première fois après rechargement.

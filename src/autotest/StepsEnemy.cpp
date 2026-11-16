@@ -848,6 +848,11 @@ std::optional<bool> enemySteps(const std::string& op, StepContext& ctx) {
         return expectEnemyDamage(ctx);
     }
 
+    if (op == "holdRemoteDefeat") {
+        enemy_sync::holdRemoteDefeatForTest(ctx.step.value("on", true));
+        return true;
+    }
+
     if (op == "deleteEnemy") {
         fopAc_ac_c* ac = runningActor(taggedId(ctx.step));
         if (ac == nullptr || !fopAcM_delete(ac)) {
