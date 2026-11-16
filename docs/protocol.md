@@ -320,6 +320,15 @@ he is in his native down action. Deku Toad snapshots carry the active bomb stun 
 and game in the same stage, room, and layer. Snapshots are transient and never replayed.
 Requires both `syncNPCs` and `syncEnemyCombat`.
 
+With `syncEnemyDamage` enabled, Bokoblin snapshots can also carry `health` and
+`healthPercent` as a checkpoint for a late or returning replica. The values
+describe the sender's current HP in its applied scale. A matching live replica
+can only lose HP, down to the normal remote-damage floor. Native enemy defeat
+still uses `ENEMY_DEFEATED`. The sending client flushes damage before sampling
+current HP; transient packets are dropped while the reliable backlog is pending. This
+checkpoint carries current authority health and does not reconcile two copies
+that independently fought the same enemy while disconnected.
+
 
 ### Combat snapshot sequencing
 

@@ -204,7 +204,9 @@ bool Link::send(const nlohmann::json& packet, Delivery delivery) {
         return false;
     }
     std::string text = packet.dump(-1, ' ', false, nlohmann::json::error_handler_t::replace);
-    if (delivery == Delivery::Reliable && !mBacklog.empty()) {
+    if (!mBacklog.empty()) {
+        // A live snapshot may include the result of a queued reliable event.
+        if (delivery == Delivery::Droppable) return false;
         if (mBacklog.size() >= kMaxBacklog) {
             TwiliLog.warn("[net] outbound backlog full, dropping the oldest packet");
             mBacklog.pop_front();

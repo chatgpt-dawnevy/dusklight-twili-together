@@ -11,6 +11,8 @@ Cocher un critère seulement après vérification de son périmètre complet.
   génération de destinataire ou d’émetteur ont des tests ciblés.
 - [ ] Dégâts et vie : faire valider les coups par l'autorité, appliquer une seule fois les coups simultanés,
   réconcilier les PV, refuser les coups après une mort et préserver les réactions natives.
+  La reprise non létale des PV du Bokoblin après reconnexion a un scénario
+  validé sur deux clients Linux. Les dégâts simultanés restent à traiter.
 - [ ] Ennemis classiques : inventorier placements, variantes et spawners. Synchroniser apparition,
   position et orientation avec interpolation, cibles, attaques, collision, réactions et défaites.
 - [ ] Ennemis à un PV : tester les morts natives des rats, Leevers, Bombskits, Keese d'ombre et autres

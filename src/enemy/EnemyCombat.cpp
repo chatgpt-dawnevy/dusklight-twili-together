@@ -2,6 +2,7 @@
 
 #include "core/SaveGate.hpp"
 #include "core/Session.hpp"
+#include "enemy/EnemyDamage.hpp"
 #include "enemy/EnemySync.hpp"
 #include "sync/WorldSync.hpp"
 
@@ -56,6 +57,7 @@ struct Snapshot {
     int knockdowns = 0;
     bool bombStun = false;
     bool applied = false;
+    std::optional<enemy_damage::HealthCheckpoint> health{};
 };
 
 std::unordered_map<fpc_ProcID, Snapshot> s_local;
@@ -159,6 +161,12 @@ bool parse(const Json& j, Snapshot& s) {
     }
     const auto attack = j.find("attacking");
     if (attack == j.end() || !attack->is_boolean()) return false;
+    if (j.contains("health") || j.contains("healthPercent")) {
+        int64_t health, percent;
+        if (!intField(j, "health", 1, 30000, health) ||
+            !intField(j, "healthPercent", 100, 500, percent)) return false;
+        s.health = enemy_damage::HealthCheckpoint{static_cast<int>(health), static_cast<int>(percent)};
+    }
     s.yaw = static_cast<s16>(yaw);
     s.action = static_cast<int>(action);
     s.phase = static_cast<int>(phase);
@@ -234,6 +242,10 @@ void tick() {
                          {"yaw", state.yaw}, {"action", state.action}, {"phase", state.phase},
                          {"animation", state.animation}, {"playMode", state.playMode}, {"frame", state.frame},
                          {"rate", state.rate}, {"attacking", state.attacking}});
+            if (const auto health = enemy_damage::bokoblinCheckpoint(id)) {
+                item["health"] = health->health;
+                item["healthPercent"] = health->percent;
+            }
         }
         states.push_back(std::move(item));
         if (states.size() == kBatchSize) sendBatch(session, states);
@@ -405,6 +417,7 @@ bool executeReplica(daE_OC_c& actor) {
         s_replicas.erase(id);
         return false;
     }
+    if (state.health) enemy_damage::reconcileBokoblin(&actor, *state.health);
     s_replicas.insert(id);
 
     actor.old.pos = actor.current.pos;

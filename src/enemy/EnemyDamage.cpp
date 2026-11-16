@@ -265,6 +265,36 @@ int sharedHealth(fopAc_ac_c* ac) {
     return ac->health;
 }
 
+std::optional<HealthCheckpoint> bokoblinCheckpoint(uint32_t id) {
+    const auto it = s_recs.find(id);
+    if (it == s_recs.end() || it->second.key.procName != fpcNm_E_OC_e ||
+        !optionOn() || !fopAcM_IsExecuting(id) ||
+        config::hostBool("game.invincibleEnemies", false)) {
+        return std::nullopt;
+    }
+    const int hp = sharedHealth(it->second.actor);
+    return hp > 0 ? std::optional{HealthCheckpoint{hp, appliedPct(id)}} : std::nullopt;
+}
+
+void reconcileBokoblin(fopAc_ac_c* actor, HealthCheckpoint checkpoint) {
+    const auto id = fopAcM_GetID(actor);
+    const auto current = bokoblinCheckpoint(id);
+    if (!current || checkpoint.percent <= 0 || enemy_sync::isDying(id)) return;
+    Rec& rec = s_recs.at(id);
+    const bool queuedHit = std::any_of(s_pending.begin(), s_pending.end(), [&](const Pending& hit) {
+        return rec.location.matches(hit.location) && enemy_sync::sameKey(rec.key, hit.hit.key);
+    });
+    if (queuedHit) return;
+    const int next = std::max<int>(rec.floor,
+        (checkpoint.health * current->percent + checkpoint.percent / 2) / checkpoint.percent);
+    if (next >= current->health) return;
+
+    // The hit poll has already run. Preserve any new local hit and suppress the echo.
+    followPct(rec, current->percent);
+    writeHealth(actor, next);
+    rec.lastHealth = static_cast<int16_t>(rec.lastHealth - (current->health - next));
+}
+
 int countedHitsLeft(fopAc_ac_c* ac) {
     return fopAcM_GetName(ac) == fpcNm_E_SM_e ? static_cast<daE_SM_c*>(ac)->field_0x984 : -1;
 }

@@ -456,7 +456,8 @@ test("ENEMY_COMBAT scopes snapshots to the elected teammate in the same room", (
 
     const states = [{ procName: 485, roomNo: 0, params: 0xffffff00, setId: 0xffff, dup: 0,
         home: { x: 1, y: 2, z: 3 }, x: 8, y: 2, z: 5, yaw: 32767,
-        action: 4, phase: 2, animation: 6, playMode: 0, frame: 16, rate: 1, attacking: true }];
+        action: 4, phase: 2, animation: 6, playMode: 0, frame: 16, rate: 1, attacking: true,
+        health: 72, healthPercent: 200 }];
     const packet = { type: "ENEMY_COMBAT", v: 1, quiet: true, stageName: "F_SP108", layerNo: 0, roomNo: 0, states };
     const isCombat = (p) => p.type === "ENEMY_COMBAT";
     a.send(packet);
