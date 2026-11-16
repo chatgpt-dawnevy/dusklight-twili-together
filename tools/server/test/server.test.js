@@ -603,6 +603,24 @@ test("boss phase proposals reach only the current combat authority", () => withS
     assert.deepEqual((await authority.waitType("ENEMY_COMBAT")).states, [stun]);
     await authority.expectNone(combat, "a retransmitted bomb reaction");
 
+    const iceArmor = { ...armor, procName: 0x211, roomNo: 50, armorBreaks: 7 };
+    const blizzeta = { ...proposal, stageName: "D_MN11A", states: [iceArmor],
+        sourceEnemyZoneEpoch: 5, sourceSequence: 4 };
+    for (const peer of peers) peer.enterStage("D_MN11A", 0, { roomNo: 51, enemyZoneEpoch: 5 });
+    await settle();
+    proposer.send({ ...blizzeta, roomNo: 51, states: [{ ...iceArmor, roomNo: 51 }] });
+    await authority.expectNone(combat, "Blizzeta proposal outside the arena");
+    for (const peer of peers) peer.enterStage("D_MN11A", 0, { roomNo: 50, enemyZoneEpoch: 6 });
+    await settle();
+    const arena = { ...blizzeta, sourceEnemyZoneEpoch: 6 };
+    for (const armorBreaks of [0, 6.5, 8]) {
+        proposer.send({ ...arena, states: [{ ...iceArmor, armorBreaks }] });
+    }
+    await authority.expectNone(combat, "invalid Blizzeta armor counts");
+    proposer.send(arena);
+    assert.deepEqual((await authority.waitType("ENEMY_COMBAT")).states, [iceArmor]);
+    await spectator.expectNone(combat, "Blizzeta proposal leaked beyond the authority");
+
 }));
 
 test("queued team packets are numbered by the server, live and in the replay", () => withServer(async (mk) => {

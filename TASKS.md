@@ -36,9 +36,10 @@ Cocher un critère seulement après vérification de son périmètre complet.
   terre de Fyrus et d’étourdissement du crapaud Mojo passent également.
   La défaite du crapaud Mojo, un seul coffre de grappin et la porte de
   sortie sont vérifiés dans les deux directions. La défaite de
-  Blizzeta est testée avec les deux joueurs en seconde forme.
-  Les combats complets et le changement de forme partagé de Blizzeta
-  restent à vérifier.
+  Blizzeta est testée avec les deux joueurs en seconde forme. Ses six
+  ruptures d’armure et l’arrivée en seconde forme sont vérifiées
+  lorsque les joueurs alternent les coups dans les deux ordres.
+  Les combats complets et les coups de la seconde forme restent à vérifier.
 - [ ] Objets et progression : vérifier les acquisitions et dépenses dans les deux modes de stock, les
   achats, bouteilles, échanges, clés, checks randomisés et exploration séparée suivie d'un rattrapage.
   Deux clients Linux ont réconcilié objets, événement et interrupteurs

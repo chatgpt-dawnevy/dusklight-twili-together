@@ -9,6 +9,7 @@
 #include "m_Do/m_Do_ext.h"
 #include "d/d_kankyo.h"
 #include "d/actor/d_a_b_dr.h"
+#include "d/actor/d_a_b_yo.h"
 #include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_oc.h"
@@ -43,7 +44,9 @@ constexpr int kToadBombDamage = 8;
 constexpr int kToadDeath = 9;
 constexpr int kArgorokTailHit = 2;
 constexpr int kArgorokDamageDemo = 11;
-constexpr auto kArgorokArmorTimeout = std::chrono::seconds(45);
+constexpr int kBlizzetaLastArmorModel = 6;
+constexpr int kBlizzetaSecondForm = 7;
+constexpr auto kArmorPhaseTimeout = std::chrono::seconds(45);
 constexpr auto kTimeout = std::chrono::milliseconds(750);
 constexpr auto kToadStunTimeout = std::chrono::seconds(8);
 
@@ -144,9 +147,10 @@ bool parse(const Json& j, Snapshot& s) {
     using enemy_sync::detail::intField;
     int64_t yaw, action, phase, animation, playMode;
     if (!enemy_sync::detail::parseKey(j, s.key) || s.key.roomNo != s_room) return false;
-    if (s.key.procName == fpcNm_B_DR_e) {
+    if (s.key.procName == fpcNm_B_DR_e || s.key.procName == fpcNm_B_YO_e) {
         int64_t armorBreaks;
-        if (!intField(j, "armorBreaks", 1, 2, armorBreaks)) return false;
+        const int last = s.key.procName == fpcNm_B_YO_e ? kBlizzetaSecondForm : 2;
+        if (!intField(j, "armorBreaks", 1, last, armorBreaks)) return false;
         s.armorBreaks = static_cast<int>(armorBreaks);
         return true;
     }
@@ -242,7 +246,7 @@ void tick() {
     }
     const auto now = Clock::now();
     std::erase_if(s_remote, [&](const Snapshot& s) {
-        if (s.armorBreaks != 0) return now - s.at >= kArgorokArmorTimeout;
+        if (s.armorBreaks != 0) return now - s.at >= kArmorPhaseTimeout;
         return now - s.at >= (s.bombStun ? kToadStunTimeout : kTimeout);
     });
     if (owner == 0 || now - s_lastSend < kInterval ||
@@ -257,7 +261,7 @@ void tick() {
         if (phaseProposal && state.armorBreaks == 0 && state.knockdowns == 0) continue;
         if (now - state.at >= kTimeout || enemy_sync::isDying(id)) continue;
         Json item = enemy_sync::detail::keyJson(state.key);
-        if (state.key.procName == fpcNm_B_DR_e) {
+        if (state.key.procName == fpcNm_B_DR_e || state.key.procName == fpcNm_B_YO_e) {
             item["armorBreaks"] = state.armorBreaks;
         } else if (state.key.procName == fpcNm_E_FM_e) {
             item["knockdowns"] = state.knockdowns;
@@ -371,7 +375,7 @@ void updateArgorok(daB_DR_c& actor) {
         return;
     }
     if (snapshot == s_remote.end() || snapshot->armorBreaks <= actor.field_0x7d1 ||
-        Clock::now() - snapshot->at >= kArgorokArmorTimeout) {
+        Clock::now() - snapshot->at >= kArmorPhaseTimeout) {
         return;
     }
     if (actor.field_0x7d1 == 0 && actor.mBreakPartsNo == 0) {
@@ -381,6 +385,46 @@ void updateArgorok(daB_DR_c& actor) {
         actor.mBreakPartsNo = 2;
         actor.mTailCc.OffTgSetBit();
         actor.setActionMode(kArgorokTailHit, 12);
+    }
+}
+
+void updateBlizzeta(daB_YO_c& actor) {
+    const auto id = fopAcM_GetID(&actor);
+    const auto* key = enemy_sync::trackedKey(id);
+    if (key == nullptr || s_zoneEpoch != Session::instance().enemyZoneEpoch() || s_authority == 0 ||
+        !s_location.matches(enemy_sync::detail::currentLocation()) ||
+        key->roomNo != s_room || dStage_roomControl_c::getStayNo() != s_room ||
+        dComIfGp_isEnableNextStage() || enemy_sync::isDying(id) ||
+        actor.mAction == daB_YO_c::ACT_OPENING || actor.mAction == daB_YO_c::ACT_DEATH)
+    {
+        return;
+    }
+
+    const int armorBreaks = actor.mAction == daB_YO_c::ACT_SERIOUS_DEMO ?
+        kBlizzetaSecondForm : actor.mModelNo;
+    const auto snapshot = std::find_if(s_remote.begin(), s_remote.end(),
+        [&](const Snapshot& state) { return enemy_sync::sameKey(state.key, *key); });
+    if (armorBreaks > 0 && (s_authority == Session::instance().selfClientId() ||
+        snapshot == s_remote.end() || armorBreaks > snapshot->armorBreaks)) {
+        Snapshot local;
+        local.key = *key;
+        local.armorBreaks = armorBreaks;
+        local.at = Clock::now();
+        s_local[id] = local;
+    }
+    if (snapshot == s_remote.end() || snapshot->armorBreaks <= armorBreaks ||
+        actor.mAction != daB_YO_c::ACT_CHASE || actor.mMode != 2 || actor.mDamageTimer != 0 ||
+        dComIfGp_event_runCheck() || Clock::now() - snapshot->at >= kArmorPhaseTimeout) {
+        return;
+    }
+
+    // The chase reaction sets the correct model, collision radius and timer for each layer.
+    actor.mChillKey = 0;
+    if (actor.mModelNo == kBlizzetaLastArmorModel) {
+        actor.setActionMode(daB_YO_c::ACT_SERIOUS_DEMO, 0);
+    } else {
+        dComIfGs_onOneZoneSwitch(6, fopAcM_GetRoomNo(&actor));
+        actor.setActionMode(daB_YO_c::ACT_CHASE, 1);
     }
 }
 

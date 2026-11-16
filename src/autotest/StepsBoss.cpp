@@ -630,6 +630,36 @@ std::optional<bool> bossSteps(const std::string& op, StepContext& ctx) {
         return false;
     }
 
+    if (op == "hitBlizzetaArmor" || op == "expectBlizzetaArmor") {
+        auto* actor = liveBoss();
+        const int armorBreaks = step.value("armorBreaks", 0);
+        if (actor != nullptr && fopAcM_GetName(actor) == fpcNm_B_YO_e) {
+            auto& boss = *static_cast<daB_YO_c*>(actor);
+            const bool eventRunning = dComIfGp_event_runCheck();
+            if (op == "expectBlizzetaArmor" && boss.mModelNo == armorBreaks && !eventRunning &&
+                boss.mAction != daB_YO_c::ACT_OPENING && boss.mAction != daB_YO_c::ACT_SERIOUS_DEMO) {
+                return true;
+            }
+            if (op == "hitBlizzetaArmor" && armorBreaks >= 1 && armorBreaks <= 7 &&
+                boss.mModelNo == armorBreaks - 1 && boss.mAction == daB_YO_c::ACT_CHASE &&
+                boss.mMode == 2 && boss.mDamageTimer == 0 && !eventRunning) {
+                // The Ball and Chain hit's native action entry. Actor code updates armor and collision.
+                boss.mChillKey = 0;
+                if (armorBreaks == 7) {
+                    boss.setActionMode(daB_YO_c::ACT_SERIOUS_DEMO, 0);
+                } else {
+                    dComIfGs_onOneZoneSwitch(6, fopAcM_GetRoomNo(actor));
+                    boss.setActionMode(daB_YO_c::ACT_CHASE, 1);
+                }
+                return true;
+            }
+        }
+        if (ctx.seconds > ctx.timeout(50.0)) {
+            ctx.fail(fmt::format("{}: Blizzeta did not reach step {}", op, armorBreaks));
+        }
+        return false;
+    }
+
     if (op == "prepareBlizzetaEnding") {
         auto* actor = liveBoss();
         if (actor != nullptr && fopAcM_GetName(actor) == fpcNm_B_YO_e) {

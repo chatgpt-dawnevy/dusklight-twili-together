@@ -300,3 +300,14 @@
   Preuves dans `tests-coop/boss-results/20261116-222551/`.
 - Prochaine action — synchroniser les ruptures d’armure de Blizzeta
   et l’entrée en seconde forme entre les deux joueurs.
+- PR #24 fusionnée par squash (`0a7d4b2`).
+- Branche `feature/blizzeta-armor-phase`. Le relais accepte les
+  propositions de Blizzeta de 1 à 7 exclusivement dans son arène.
+  L’autorité et son partenaire appliquent chaque réaction d’armure
+  dans l’ordre, puis jouent la scène native de la seconde forme.
+  La compilation Linux et les 130 tests du relais passent. Les deux
+  clients Linux ont confirmé les six ruptures et la seconde forme
+  dans les deux ordres, avec un seul joueur déclenchant chaque coup.
+  Preuves dans `tests-coop/boss-results/20261116-223811/`.
+- Prochaine action — partager les deux réactions non létales de la
+  seconde forme et vérifier l’état des glaçons après chaque coup.

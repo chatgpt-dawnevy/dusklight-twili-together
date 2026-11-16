@@ -4,6 +4,7 @@
 #include <string>
 
 class daB_DR_c;
+class daB_YO_c;
 class daE_OC_c;
 class daE_DT_c;
 class e_fm_class;
@@ -17,6 +18,7 @@ bool handlePacket(const std::string& type, const nlohmann::json& packet);
 bool executeReplica(daE_OC_c& actor);
 void capture(daE_OC_c& actor);
 void updateArgorok(daB_DR_c& actor);
+void updateBlizzeta(daB_YO_c& actor);
 void updateDekuToad(daE_DT_c& actor);
 void updateFyrus(e_fm_class& actor);
 }
