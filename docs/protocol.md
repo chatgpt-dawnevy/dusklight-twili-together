@@ -326,7 +326,10 @@ scene creates the native B_DRE actor and enables the vulnerable phase.
 Blizzeta uses the same field. Values 1 through 6 describe its thinner ice
 models and 7 signals the native transition to the second form. A receiver
 runs each missing armor reaction in order, once its current reaction and
-any local event have finished.
+any local event have finished. Blizzeta's second form can also carry
+`lastPhaseDamage` (1 or 2). Each missing hit runs the native damage and
+icicle reactions before the next hit may apply. The final hit uses
+`ENEMY_DEFEATED`.
 A replica that confirms an Argorok or Blizzeta armor break, or a Fyrus
 knockdown, can set `phaseProposal` on one snapshot for that boss. The relay forwards it exclusively to the combat authority in that
 arena. The authority applies the native transition and broadcasts its own

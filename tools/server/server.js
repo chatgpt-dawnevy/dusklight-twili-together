@@ -365,7 +365,9 @@ function isBossPhaseProposal(state, stageName, roomNo) {
     }
     if (state.procName === BLIZZETA_PROFILE) {
         return stageName === "D_MN11A" && roomNo === 50 && Number.isInteger(state.armorBreaks) &&
-            state.armorBreaks >= 1 && state.armorBreaks <= 7;
+            state.armorBreaks >= 1 && state.armorBreaks <= 7 &&
+            (!("lastPhaseDamage" in state) || (state.armorBreaks === 7 &&
+             (state.lastPhaseDamage === 1 || state.lastPhaseDamage === 2)));
     }
     if (state.procName === FYRUS_PROFILE) {
         return stageName === "D_MN04A" && Number.isInteger(state.knockdowns) &&

@@ -34,3 +34,19 @@ the attack into B's local actor. It does not verify recovery of a shared health 
 Local evidence: `tests-coop/authority-results/20261116-001548/enemy-combat-authority-reconnect/`.
 The relay logged one missed heartbeat before the scripted disconnect and successfully
 reconnected A. WAN and Windows gameplay remain untested.
+
+## 2026-11-16 — Blizzeta
+
+Two Linux clients with isolated saves and a local relay passed the following
+scripted scenarios. Each hit invokes the native action entry. Player-controlled
+Ball and Chain aim, attack replication, movement and a complete fight still
+need gameplay validation.
+
+| Test | Result | Local evidence |
+| --- | --- | --- |
+| Alternating armor hits, starting with either player | Both clients enter the second form after six armor breaks and the final transition. | `tests-coop/boss-results/20261116-223811/` |
+| One nonlethal hit per player in the second form, in both orders | Both clients play each damage reaction, record each hit once and acknowledge ten broken icicles each time. | `tests-coop/boss-results/20261116-225902/` |
+| Final hit from either player in second form | Native BOSSCLEAR05 on both clients, one heart and warp per arena, mirror shard, shared heart, both exits to F_SP114. | `tests-coop/boss-results/20261116-222551/` |
+
+The Linux mod compiled and all 130 relay tests passed. The relay test rejects
+second-form damage proposals before the second form and hit counts above two.

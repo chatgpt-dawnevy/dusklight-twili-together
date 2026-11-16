@@ -621,6 +621,14 @@ test("boss phase proposals reach only the current combat authority", () => withS
     assert.deepEqual((await authority.waitType("ENEMY_COMBAT")).states, [iceArmor]);
     await spectator.expectNone(combat, "Blizzeta proposal leaked beyond the authority");
 
+    const damage = { ...iceArmor, lastPhaseDamage: 2 };
+    const damagedArena = { ...arena, sourceSequence: 5, states: [damage] };
+    proposer.send({ ...damagedArena, states: [{ ...damage, lastPhaseDamage: 3 }] });
+    proposer.send({ ...damagedArena, states: [{ ...damage, armorBreaks: 6 }] });
+    await authority.expectNone(combat, "Blizzeta damage before the second form or beyond two hits");
+    proposer.send(damagedArena);
+    assert.deepEqual((await authority.waitType("ENEMY_COMBAT")).states, [damage]);
+
 }));
 
 test("queued team packets are numbered by the server, live and in the replay", () => withServer(async (mk) => {

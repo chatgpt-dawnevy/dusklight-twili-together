@@ -67,6 +67,7 @@ struct Snapshot {
     bool bombStun = false;
     bool applied = false;
     std::optional<enemy_damage::HealthCheckpoint> health{};
+    int blizzetaHits = 0;
 };
 
 std::unordered_map<fpc_ProcID, Snapshot> s_local;
@@ -152,6 +153,13 @@ bool parse(const Json& j, Snapshot& s) {
         const int last = s.key.procName == fpcNm_B_YO_e ? kBlizzetaSecondForm : 2;
         if (!intField(j, "armorBreaks", 1, last, armorBreaks)) return false;
         s.armorBreaks = static_cast<int>(armorBreaks);
+        if (s.key.procName == fpcNm_B_YO_e && j.contains("lastPhaseDamage")) {
+            int64_t hits;
+            if (armorBreaks != kBlizzetaSecondForm || !intField(j, "lastPhaseDamage", 1, 2, hits)) {
+                return false;
+            }
+            s.blizzetaHits = static_cast<int>(hits);
+        }
         return true;
     }
     if (s.key.procName == fpcNm_E_FM_e) {
@@ -263,6 +271,7 @@ void tick() {
         Json item = enemy_sync::detail::keyJson(state.key);
         if (state.key.procName == fpcNm_B_DR_e || state.key.procName == fpcNm_B_YO_e) {
             item["armorBreaks"] = state.armorBreaks;
+            if (state.blizzetaHits != 0) item["lastPhaseDamage"] = state.blizzetaHits;
         } else if (state.key.procName == fpcNm_E_FM_e) {
             item["knockdowns"] = state.knockdowns;
         } else if (state.key.procName == fpcNm_E_DT_e) {
@@ -321,6 +330,7 @@ bool handlePacket(const std::string& type, const Json& packet) {
             [&](const Snapshot& s) { return enemy_sync::sameKey(s.key, state.key); });
         if (existing != s_remote.end()) {
             if (state.armorBreaks < existing->armorBreaks || state.knockdowns < existing->knockdowns ||
+                state.blizzetaHits < existing->blizzetaHits ||
                 (!state.bombStun && existing->bombStun && !existing->applied)) continue;
             state.applied = state.bombStun && existing->applied && !phaseProposal;
             *existing = state;
@@ -404,17 +414,39 @@ void updateBlizzeta(daB_YO_c& actor) {
         kBlizzetaSecondForm : actor.mModelNo;
     const auto snapshot = std::find_if(s_remote.begin(), s_remote.end(),
         [&](const Snapshot& state) { return enemy_sync::sameKey(state.key, *key); });
+    const int hits = actor.mLastPhaseDamage;
     if (armorBreaks > 0 && (s_authority == Session::instance().selfClientId() ||
-        snapshot == s_remote.end() || armorBreaks > snapshot->armorBreaks)) {
+        snapshot == s_remote.end() || armorBreaks > snapshot->armorBreaks ||
+        hits > snapshot->blizzetaHits)) {
         Snapshot local;
         local.key = *key;
         local.armorBreaks = armorBreaks;
+        local.blizzetaHits = hits;
         local.at = Clock::now();
         s_local[id] = local;
     }
-    if (snapshot == s_remote.end() || snapshot->armorBreaks <= armorBreaks ||
-        actor.mAction != daB_YO_c::ACT_CHASE || actor.mMode != 2 || actor.mDamageTimer != 0 ||
-        dComIfGp_event_runCheck() || Clock::now() - snapshot->at >= kArmorPhaseTimeout) {
+    if (snapshot == s_remote.end() || dComIfGp_event_runCheck() ||
+        Clock::now() - snapshot->at >= kArmorPhaseTimeout) {
+        return;
+    }
+
+    if (actor.mModelNo == kBlizzetaSecondForm) {
+        if (hits < snapshot->blizzetaHits && actor.mAction >= daB_YO_c::ACT_JUMP &&
+            actor.mAction <= daB_YO_c::ACT_ATTACK_BODY && actor.mIFrameIronTimer == 0 &&
+            actor.current.pos.y <= 1000.0f && !actor.mTgIronSph[0].ChkTgShield()) {
+            // The second-form hit sends each surviving icicle into its native break reaction.
+            ++actor.mLastPhaseDamage;
+            actor.health = 100;
+            actor.mIFrameIronTimer = 20;
+            dComIfGs_onOneZoneSwitch(8, fopAcM_GetRoomNo(&actor));
+            actor.setIcicleOperate(9);
+            actor.setActionMode(daB_YO_c::ACT_DAMAGE, 0);
+        }
+        return;
+    }
+
+    if (snapshot->armorBreaks <= armorBreaks || actor.mAction != daB_YO_c::ACT_CHASE ||
+        actor.mMode != 2 || actor.mDamageTimer != 0) {
         return;
     }
 

@@ -313,3 +313,29 @@
   Linux avec le même paquet (`tests-coop/boss-results/20261116-224114/`).
 - Prochaine action — partager les deux réactions non létales de la
   seconde forme et vérifier l’état des glaçons après chaque coup.
+- PR #25 fusionnée par squash (`71f6dc0`).
+- Branche `feature/blizzeta-second-form-damage`. La compilation Linux
+  et les 130 tests du relais passent. Le premier essai à deux a confirmé
+  la réaction native et l’éclatement des dix glaçons après le premier
+  coup de B. Le second coup n’a pas atteint sa fenêtre dans le scénario.
+  La relance attend la vulnérabilité native et précise l’action,
+  le mode, la hauteur et le masque de glaçons en cas d’échec.
+  Preuves dans `tests-coop/boss-results/20261116-224932/` et
+  `tests-coop/boss-results/20261116-225439/`.
+- Le relevé local actualisé de l’ISO trouve 87 profils ennemis placés.
+  Sur le commit de la PR #25, 38 n’ont aucune entrée explicite de
+  dégâts ou de défaite dans les listes du mod. Le SDK définit aussi
+  21 profils ennemis sans placement direct dans ces archives.
+- Les essais mixtes avec les paquets du commit `9fb12a0` et le moteur
+  Windows v2.0.3 sous Wine ont échoué avant la connexion du client
+  Windows. WineD3D plante, DXVK refuse la création du contexte D3D11
+  et le rendu Vulkan ne dépasse pas l’initialisation dans Xvfb.
+  Le test en compositeur virtuel échoue à créer la fenêtre Windows.
+  Un essai sur un hôte Windows natif reste nécessaire.
+- Le randomizer 1.0.6 a généré puis activé le seed réel
+  `Lanayru Bokoblin Zelda` dans une nouvelle partie isolée.
+  Les journaux et le seed se trouvent dans
+  `tests-coop/native-seed-keyboard-work/`.
+- Prochaine action — permettre au lanceur de conserver une sauvegarde
+  du randomizer, la charger par le menu natif, puis vérifier à deux
+  l’ouverture, l’objet accordé et la déduplication d’un coffre du seed.

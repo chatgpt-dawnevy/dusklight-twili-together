@@ -583,3 +583,40 @@ module.exports.push(...["A", "B"].map(first => ({
         };
     }),
 })));
+
+module.exports.push(...["A", "B"].map(first => ({
+    name: `boss-blizzeta-second-form-${first.toLowerCase()}`,
+    description: "teammates alternate nonlethal hits and every icicle plays its native break reaction",
+    tags: ["boss-fight"],
+    timeoutSec: 370,
+    cvars: COMMON_CVARS,
+    instances: ["A", "B"].map(name => {
+        const other = name === "A" ? "B" : "A";
+        return {
+            name,
+            start: alive("snowpeakBoss"),
+            steps: [
+                ...connect,
+                at("D_MN11A"),
+                { op: "waitPeers", count: 1, sameStage: true },
+                ...(name === "A" ? [
+                    { op: "setRoomOption", name: "syncNPCs" },
+                    { op: "setRoomOption", name: "syncEnemyCombat" },
+                ] : []),
+                { op: "waitRoomOption", name: "syncNPCs" },
+                { op: "waitRoomOption", name: "syncEnemyCombat" },
+                ...fightStart,
+                { op: "prepareBlizzetaEnding" },
+                ...barrier("vulnerable-form", other),
+                ...[1, 2].flatMap(hits => [
+                    ...((hits === 1) === (name === first) ? [{ op: "hitBlizzetaSecondForm", hits }] : []),
+                    { op: "expectBlizzetaHit", hits },
+                    { op: "expectBlizzetaIciclesBroken", hits },
+                    ...barrier(`ice-broken-${hits}`, other),
+                ]),
+                { op: "expectDungeonBit", bit: BOSS_BIT, set: false },
+                { op: "quit" },
+            ],
+        };
+    }),
+})));
