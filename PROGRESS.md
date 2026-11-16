@@ -265,3 +265,9 @@
 - Le client WebSocket corrigé est resté connecté pendant les 35 s
   d’attente avec son identifiant initial. Preuves dans
   `tests-coop/results/20261116-220810/ws-idle-heartbeat/`.
+- Après un arrêt et redémarrage du relais, les deux clients WebSocket
+  se reconnectent et se retrouvent. Les deux clients TCP passent
+  également le scénario de présence.
+- Prochaine action — vérifier que deux joueurs peuvent avancer dans
+  des donjons différents, évoluer pendant une déconnexion, puis
+  réunir leurs objets et interrupteurs en se retrouvant.
