@@ -542,7 +542,7 @@ test("ENEMY_COMBAT scopes snapshots to the elected teammate in the same room", (
     assert.equal(handedOff.sequence, 3, "relay sequence stays monotonic across handoff");
 }));
 
-test("Argorok armor proposals reach only the current combat authority", () => withServer(async (mk) => {
+test("boss phase proposals reach only the current combat authority", () => withServer(async (mk) => {
     const authority = mk(), proposer = mk(), spectator = mk(), elsewhere = mk();
     const peers = [authority, proposer, spectator, elsewhere];
     for (const peer of peers) await peer.join({ teamId: "red" });
@@ -575,6 +575,20 @@ test("Argorok armor proposals reach only the current combat authority", () => wi
     authority.send({ ...proposal, phaseProposal: false, sourceSequence: 1 });
     assert.equal((await proposer.waitType("ENEMY_COMBAT")).phaseProposal, undefined);
     assert.deepEqual((await spectator.waitType("ENEMY_COMBAT")).states, [armor]);
+
+    for (const peer of peers) peer.enterStage("D_MN04A", 0, { roomNo: 50, enemyZoneEpoch: 3 });
+    await settle();
+    const knockdown = { ...armor, procName: 0x1d7, knockdowns: 1 };
+    delete knockdown.armorBreaks;
+    const fyrus = { ...proposal, stageName: "D_MN04A", states: [knockdown],
+        sourceEnemyZoneEpoch: 3, sourceSequence: 2 };
+    proposer.send({ ...fyrus, states: [{ ...knockdown, knockdowns: 0 }] });
+    proposer.send({ ...fyrus, states: [armor] });
+    await authority.expectNone(combat, "invalid Fyrus proposal or wrong arena");
+    proposer.send(fyrus);
+    const down = await authority.waitType("ENEMY_COMBAT");
+    assert.equal(down.phaseProposal, true);
+    assert.deepEqual(down.states, [knockdown]);
 }));
 
 test("queued team packets are numbered by the server, live and in the replay", () => withServer(async (mk) => {

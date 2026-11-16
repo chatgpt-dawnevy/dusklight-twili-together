@@ -28,6 +28,7 @@ const TELEPORT_MIN_INTERVAL_MS = envNumber("TT_TELEPORT_INTERVAL_MS", 1000);
 const DAMAGE_MIN_INTERVAL_MS = envNumber("TT_DAMAGE_INTERVAL_MS", 200);
 const MAX_PVP_DAMAGE = 4; // quarter hearts per hit
 const ARGOROK_PROFILE = 0xf7;
+const FYRUS_PROFILE = 0x1d7;
 const PVP_KIND_COUNT = 12;
 const PVP_KNOCKBACK_COUNT = 2; // "spl": 0 light, 1 knockdown
 const DAMAGE_RESULTS = new Set(["applied", "blocked", "dropped"]);
@@ -353,6 +354,18 @@ function broadcastPresence(room, sender, packet) {
             c.conn.send(msg);
         }
     }
+}
+
+function isBossPhaseProposal(state, stageName, roomNo) {
+    if (!state || state.roomNo !== roomNo) return false;
+    if (state.procName === ARGOROK_PROFILE) {
+        return stageName === "D_MN07A" && (state.armorBreaks === 1 || state.armorBreaks === 2);
+    }
+    if (state.procName === FYRUS_PROFILE) {
+        return stageName === "D_MN04A" && Number.isInteger(state.knockdowns) &&
+            state.knockdowns >= 1 && state.knockdowns <= 127;
+    }
+    return false;
 }
 
 function acceptSourceSequence(packet, previous) {
@@ -1238,10 +1251,8 @@ function handlePacket(client, packet) {
             (lowest, peer) => peer.clientId < lowest.clientId ? peer : lowest, client);
         const phaseProposal = packet.phaseProposal === true;
         if (phaseProposal) {
-            const state = packet.states[0];
-            if (authority === client || packet.states.length !== 1 || !state ||
-                state.procName !== ARGOROK_PROFILE || state.roomNo !== client.roomNo ||
-                (state.armorBreaks !== 1 && state.armorBreaks !== 2)) return;
+            if (authority === client || packet.states.length !== 1 ||
+                !isBossPhaseProposal(packet.states[0], client.stageName, client.roomNo)) return;
         } else if (authority !== client) {
             return;
         }

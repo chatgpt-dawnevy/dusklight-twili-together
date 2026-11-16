@@ -196,3 +196,21 @@
 - Prochaine action : donner à chaque joueur la possibilité de mettre
   Fyrus à terre, puis vérifier le passage aux états natifs de Fyrus
   dans les deux directions.
+- PR #17 fusionnée par squash (`59f7bb1`).
+- Le même seed du randomizer entraîne un partage sur les deux clients.
+  Deux seeds différents restent isolés. Les deux scénarios automatisés
+  ont réussi dans `tests-coop/results/20261116-204051/`. Ils ne couvrent
+  pas une campagne complète.
+- Branche `feature/fyrus-peer-knockdowns`. Le coéquipier peut transmettre
+  son compteur de mises à terre natives à l’autorité de Fyrus. Le relais
+  vérifie le profil, l’arène, la salle et la valeur du compteur. La
+  compilation Linux passe. Les tests de scène et les régressions du
+  relais sont en cours.
+- Fyrus atteint la phase vulnérable chez les deux clients lorsque le
+  joueur qui détient l’autorité porte le coup, et lorsque son partenaire
+  le porte. Les deux scénarios utilisent l’entrée native de mise à terre.
+  Les 129 tests du relais et la compilation Linux passent.
+  La régression de l’étourdissement du crapaud Mojo passe également.
+  Preuves dans `tests-coop/boss-results/20261116-204354/`.
+- Prochaine action : transmettre un étourdissement du crapaud Mojo une
+  seule fois par entrée native, quel que soit le joueur qui le déclenche.

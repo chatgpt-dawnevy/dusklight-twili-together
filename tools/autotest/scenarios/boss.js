@@ -274,7 +274,7 @@ const miniBosses = [
     },
 ];
 
-function sharedPhase(name, description, start, trigger, expect) {
+function sharedPhase(name, description, start, trigger, expect, initiator = "A") {
     return {
         name,
         description,
@@ -284,6 +284,7 @@ function sharedPhase(name, description, start, trigger, expect) {
         instances: ["A", "B"].map((name) => ({
             name,
             start,
+            launchDelayMs: name === "A" ? 5000 : 1500,
             steps: [
                 ...connect,
                 at(start.stage),
@@ -297,7 +298,7 @@ function sharedPhase(name, description, start, trigger, expect) {
                 ...fightStart,
                 ...(trigger === "startToadBombStun" ? [{ op: "prepareToadCombat" }] : []),
                 ...barrier("phase-ready", name === "A" ? "B" : "A", 300),
-                ...(name === "A" ? [{ op: trigger }] : []),
+                ...(name === initiator ? [{ op: trigger }] : []),
                 { op: expect, timeoutSec: 90 },
                 ...barrier("phase-reached", name === "A" ? "B" : "A", 120),
                 { op: "quit" },
@@ -309,6 +310,8 @@ function sharedPhase(name, description, start, trigger, expect) {
 module.exports = [
     sharedPhase("boss-fyrus-shared-knockdown", "A knocks Fyrus down; B enters the native vulnerable phase",
         bosses[1].start, "startFyrusKnockdown", "expectFyrusVulnerable"),
+    sharedPhase("boss-fyrus-peer-knockdown", "B knocks Fyrus down and both enter the native vulnerable phase",
+        bosses[1].start, "startFyrusKnockdown", "expectFyrusVulnerable", "B"),
     sharedPhase("boss-toad-shared-bomb-stun", "A stuns Deku Toad with a bomb; B plays the native bomb reaction",
         { ...alive("lakebedBoss"), stage: "D_MN01B", room: 51 }, "startToadBombStun", "expectToadBombStun"),
     ...bosses.map(bossScenario),
