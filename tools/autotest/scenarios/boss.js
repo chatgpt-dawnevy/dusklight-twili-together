@@ -498,3 +498,49 @@ module.exports.push(...["A", "B"].map(killer => ({
         ],
     })),
 })));
+
+module.exports.push(...["A", "B"].map(killer => ({
+    name: `boss-blizzeta-shared-${killer.toLowerCase()}`,
+    description: `${killer} defeats Blizzeta after her second form; both players receive the rewards and use the warp`,
+    tags: ["boss-fight"],
+    timeoutSec: 450,
+    cvars: COMMON_CVARS,
+    instances: ["A", "B"].map(name => {
+        const other = name === "A" ? "B" : "A";
+        return {
+            name,
+            start: alive("snowpeakBoss"),
+            steps: [
+                ...connect,
+                at("D_MN11A"),
+                { op: "waitPeers", count: 1, sameStage: true },
+                ...(name === "A" ? [{ op: "setRoomOption", name: "syncNPCs" }] : []),
+                { op: "waitRoomOption", name: "syncNPCs" },
+                ...fightStart,
+                { op: "prepareBlizzetaEnding" },
+                ...barrier("second-form", other),
+                ...(name === killer ? [{ op: "killBoss", how: "real" }] : []),
+                { op: "expectBossClear", heart: 1, warp: 1, timeoutSec: 175 },
+                { op: "expectEventCount", name: "BOSSCLEAR05", count: 1 },
+                { op: "expectDungeonBit", bit: BOSS_BIT },
+                { op: "expectCollect", mirror: 1 },
+                { op: "expectEnemySync", ...(name === killer ? { sent: 1 } : { received: 1, applied: 1 }) },
+                ...barrier("snowpeak-cleared", other),
+                ...(name === killer ? [
+                    { op: "findFieldItem", bit: HEART_BIT, tag: "heart" },
+                    { op: "takeFieldItem", tag: "heart" },
+                ] : []),
+                { op: "expectMaxLife", delta: 5, forSec: 5 },
+                { op: "expectDungeonBit", bit: LIFE_BIT },
+                ...barrier("snowpeak-rewarded", other),
+                { op: "triggerStory", via: "bossWarp" },
+                { ...noSave, timeoutSec: 45 },
+                at("F_SP114"),
+                { op: "expectDungeonBit", stage: "D_MN11A", bit: BOSS_BIT },
+                { op: "expectMaxLife", delta: 5, forSec: 5 },
+                ...barrier("snowpeak-exited", other),
+                { op: "quit" },
+            ],
+        };
+    }),
+})));

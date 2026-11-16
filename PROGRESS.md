@@ -197,10 +197,12 @@
   Fyrus à terre, puis vérifier le passage aux états natifs de Fyrus
   dans les deux directions.
 - PR #17 fusionnée par squash (`59f7bb1`).
-- Le même seed du randomizer entraîne un partage sur les deux clients.
-  Deux seeds différents restent isolés. Les deux scénarios automatisés
-  ont réussi dans `tests-coop/results/20261116-204051/`. Ils ne couvrent
-  pas une campagne complète.
+- Avec le randomizer chargé, deux clients partageant le même seed de
+  test échangent leurs objets. Deux seeds de test différents restent
+  isolés. Les deux scénarios utilisent des fichiers de seed et un
+  résolveur simulé qui fournit les placements. Les résultats sont dans
+  `tests-coop/results/20261116-204051/`. Il reste à terminer une
+  campagne avec les placements générés et chargés par le randomizer.
 - Branche `feature/fyrus-peer-knockdowns`. Le coéquipier peut transmettre
   son compteur de mises à terre natives à l’autorité de Fyrus. Le relais
   vérifie le profil, l’arène, la salle et la valeur du compteur. La
@@ -282,3 +284,19 @@
   persistants et l'isolation entre les deux tables de sauvegarde.
   Preuves dans `tests-coop/results/20261116-221420/split-dungeon-progress/`.
 - Prochaine action — reprendre la validation de la défaite de Blizzeta.
+- PR #23 fusionnée par squash (`e0fcf8d`). GitHub n’a lancé aucun build
+  automatique sur la PR.
+- Branche `feature/blizzeta-native-clear`. La défaite distante attend
+  que la seconde forme soit prête avant de lancer la scène native.
+  L’ancien test forçait la fin dans la première forme et le boss
+  ne rencontrait jamais le mur requis par la scène. Les nouveaux
+  scénarios lancent d’abord la transition native sur les deux clients.
+  La compilation Linux et les 130 tests du relais passent.
+- Un délai intermédiaire de 120 s interrompait le scénario après le
+  dialogue de Yeta. Le délai révisé a permis de vérifier la scène
+  BOSSCLEAR05 unique, l’éclat de miroir, le cœur en un exemplaire,
+  son partage et la sortie vers la montagne, quel que soit le joueur
+  qui porte le coup final.
+  Preuves dans `tests-coop/boss-results/20261116-222551/`.
+- Prochaine action — synchroniser les ruptures d’armure de Blizzeta
+  et l’entrée en seconde forme entre les deux joueurs.

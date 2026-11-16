@@ -35,8 +35,10 @@ Cocher un critère seulement après vérification de son périmètre complet.
   la phase vulnérable dans les scénarios. Les deux directions de mise à
   terre de Fyrus et d’étourdissement du crapaud Mojo passent également.
   La défaite du crapaud Mojo, un seul coffre de grappin et la porte de
-  sortie sont vérifiés dans les deux directions. Les combats complets
-  restent à jouer.
+  sortie sont vérifiés dans les deux directions. La défaite de
+  Blizzeta est testée avec les deux joueurs en seconde forme.
+  Les combats complets et le changement de forme partagé de Blizzeta
+  restent à vérifier.
 - [ ] Objets et progression : vérifier les acquisitions et dépenses dans les deux modes de stock, les
   achats, bouteilles, échanges, clés, checks randomisés et exploration séparée suivie d'un rattrapage.
   Deux clients Linux ont réconcilié objets, événement et interrupteurs
