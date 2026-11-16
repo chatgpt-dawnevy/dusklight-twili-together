@@ -39,6 +39,7 @@ int extrasInRoom(int roomNo);
 // An enemy spawner's (E_Make) child: its spawner's home, with its place in the spawner's list
 // added to kBroodSetId as setId. Readable until the child's create returns.
 inline constexpr uint16_t kBroodSetId = 0xC000;
+void onLeeverChildRequested(fpc_ProcID id, const fopAcM_prm_class& prm);
 bool broodKey(fopAc_ac_c* child, enemy_sync::SpawnKey& out);
 // The child at `index` of a spawner's list, or fpcM_ERROR_PROCESS_ID_e.
 fpc_ProcID broodChild(fpc_ProcID spawnerId, int index);

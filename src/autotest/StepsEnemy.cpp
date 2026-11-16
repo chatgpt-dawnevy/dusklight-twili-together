@@ -23,6 +23,7 @@
 #include "d/actor/d_a_e_oc.h"
 #include "d/actor/d_a_e_s1.h"
 #include "d/actor/d_a_e_sm.h"
+#include "d/actor/d_a_e_rb.h"
 #include "d/d_bg_s_roof_chk.h"
 #include "d/d_com_inf_game.h"
 #include "d/d_stage.h"
@@ -42,6 +43,8 @@
 #include <vector>
 
 namespace twili::autotest {
+
+void startShadowKeeseNativeDeath(fopAc_ac_c& actor);
 namespace {
 
 // Actors created by spawnEnemy, by tag.
@@ -206,6 +209,20 @@ std::optional<bool> killEnemy(StepContext& ctx) {
         if (ctx.step.value("onActor", false)) {
             fopAcM_onActor(ac);
         }
+        return true;
+    }
+    if (how == "leeverNative" && fopAcM_GetName(ac) == fpcNm_E_RB_e) {
+        auto& leever = *reinterpret_cast<e_rb_class*>(ac);
+        // Native lethal transition in damage_check. The actor runs its own
+        // damage animation and deletion; no packet or disappearance is injected.
+        ac->health = 0;
+        leever.action = 10;
+        leever.mode = 0;
+        leever.rot_step = 5000;
+        return true;
+    }
+    if (how == "shadowKeeseNative" && fopAcM_GetName(ac) == fpcNm_E_YK_e) {
+        startShadowKeeseNativeDeath(*ac);
         return true;
     }
     if (how == "shellBlade") {
@@ -764,6 +781,27 @@ std::optional<bool> enemySteps(const std::string& op, StepContext& ctx) {
             ctx.fail(fmt::format("spawner '{}' makes {}, step wants {}",
                 ctx.step.value("of", std::string{}), have, ctx.step.value("count", 0)));
         }
+        return false;
+    }
+
+    if (op == "tagLeeverChild") {
+        const auto parent = sTags.find(ctx.step.value("of", std::string{}));
+        if (parent != sTags.end()) {
+            auto* child = static_cast<fopAc_ac_c*>(fopAcM_Search(
+                [](void* raw, void* data) -> void* {
+                    if (!fopAc_IsActor(raw)) return nullptr;
+                    auto* actor = static_cast<fopAc_ac_c*>(raw);
+                    const auto id = *static_cast<const fpc_ProcID*>(data);
+                    if (fopAcM_GetName(actor) == fpcNm_E_RB_e && actor->parentActorID == id &&
+                        fopAcM_IsExecuting(fopAcM_GetID(actor))) return actor;
+                    return nullptr;
+                }, &parent->second));
+            if (child != nullptr) {
+                sTags[tagOf(ctx)] = fopAcM_GetID(child);
+                return true;
+            }
+        }
+        if (ctx.seconds > ctx.timeout(20.0)) ctx.fail("tagLeeverChild: native child was not found");
         return false;
     }
 
