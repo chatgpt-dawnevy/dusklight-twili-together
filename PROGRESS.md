@@ -210,6 +210,7 @@
   joueur qui détient l’autorité porte le coup, et lorsque son partenaire
   le porte. Les deux scénarios utilisent l’entrée native de mise à terre.
   Les 129 tests du relais et la compilation Linux passent.
+  La régression de l’étourdissement du crapaud Mojo passe également.
   Preuves dans `tests-coop/boss-results/20261116-204354/`.
 - Prochaine action : transmettre un étourdissement du crapaud Mojo une
   seule fois par entrée native, quel que soit le joueur qui le déclenche.
