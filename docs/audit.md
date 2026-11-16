@@ -45,7 +45,7 @@ Audit baseline: 2026-11-16, Twili-Together 0.5.0, protocol 5.
 | --- | --- | --- |
 | Diababa / B_BQ | Native ending | Scripted end scenario exists. Full fight, head/projectile control and rewards across reconnect need verification. |
 | Fyrus / E_FM | Native ending; knockdown counter | The native vulnerable phase was verified on two Linux clients with either player initiating it. Chains, heat attacks and the full fight remain open. |
-| Deku Toad / E_DT | Native ending, nonlethal health, bomb stun | Verified Linux scripted bomb reaction. Intro, spawned tadpoles and full encounter remain open. |
+| Deku Toad / E_DT | Native ending, nonlethal health, bomb stun | Two Linux clients verified the bomb reaction, native defeat, a single Clawshot chest and both exits with either player initiating. The fixture prepares the arena. Intro, tadpoles and the full fight remain open. |
 | Twilit Bloat / E_YMB | Native ending | Full phases, spawning and tears sequence unverified. |
 | Argorok / B_DR | Nonlethal damage, both armor breaks and native ending | Two Linux test clients verified both armor transitions, B_DRE, mirror, one shared heart and both exits. Fixtures inject the native trigger for each phase. Flight, attacks and the full fight remain open. |
 | Death Sword / E_VT | Native ending | Linux fixture bypassed opening. Both clients reached native clear in both directions. No full fight validation. |

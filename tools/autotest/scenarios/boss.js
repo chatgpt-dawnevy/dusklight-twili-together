@@ -1,7 +1,7 @@
 // Boss fights are never interrupted: B fights its own boss while A, in its own copy of the arena,
 // kills A's boss, takes its heart container and warps out. Then B finishes its own clear.
 
-const { COMMON_CVARS, STAGES, STORY, barrier, connect } = require("../lib");
+const { COMMON_CVARS, ITEMS, STAGES, STORY, barrier, connect } = require("../lib");
 
 // MoveRecord qual bit (StoryTypes.hpp).
 const QUAL_BOSS = 64;
@@ -327,6 +327,49 @@ module.exports = [
     ...bosses.map(observeScenario),
     ...miniBosses.map((m) => miniBossScenario(m, true)),
 ];
+
+module.exports.push(...["A", "B"].map(killer => ({
+    name: `boss-toad-reward-${killer.toLowerCase()}`,
+    description: `${killer} defeats Deku Toad and opens its Clawshot chest once for both players`,
+    tags: ["boss-fight"],
+    timeoutSec: 240,
+    cvars: [...COMMON_CVARS, "game.infiniteHearts=1"],
+    instances: ["A", "B"].map(name => {
+        const other = name === "A" ? "B" : "A";
+        return {
+            name,
+            start: { ...alive("lakebedBoss"), stage: "D_MN01B", room: 51 },
+            launchDelayMs: name === "A" ? 5000 : 1500,
+            steps: [
+                ...connect,
+                at("D_MN01B"),
+                { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+                ...(name === "A" ? [{ op: "setRoomOption", name: "syncNPCs" }] : []),
+                { op: "waitRoomOption", name: "syncNPCs" },
+                ...fightStart,
+                { op: "prepareToadCombat" },
+                { op: "expectNoItem", item: ITEMS.hookshot, forSec: 0 },
+                ...barrier("toad-fight-ready", other),
+                ...(name === killer ? [{ op: "killBoss" }] : []),
+                { op: "expectBossClear", heart: 0, warp: 0, actorGone: true },
+                { op: "expectDungeonBit", bit: MINIBOSS_BIT },
+                { op: "expectEnemySync", ...(name === killer ?
+                    { sent: 1, received: 0 } : { sent: 0, received: 1, applied: 1 }) },
+                { op: "expectChestOpen", tbox: 0, open: false },
+                ...barrier("toad-defeated", other),
+                ...(name === killer ? [{ op: "openChest", tbox: 0, approach: true }] : []),
+                { op: "expectItem", item: ITEMS.hookshot },
+                { op: "expectChestOpen", tbox: 0 },
+                ...(name === killer ? [] : [{ op: "openChest", tbox: 0, approach: true, refused: true }]),
+                ...barrier("toad-reward-shared", other),
+                { op: "exitToadArena" },
+                { op: "expectDungeonBit", stage: "D_MN01B", bit: MINIBOSS_BIT },
+                ...barrier("toad-exited", other),
+                { op: "quit" },
+            ],
+        };
+    }),
+})));
 
 module.exports.push(...["A", "B"].map(initiator => ({
     name: initiator === "A" ? "boss-argorok-shared-armor" : "boss-argorok-peer-armor",
