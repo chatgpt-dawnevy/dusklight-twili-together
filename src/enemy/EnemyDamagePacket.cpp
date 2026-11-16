@@ -11,6 +11,8 @@
 namespace twili::enemy_damage {
 namespace {
 
+uint64_t s_nextSourceSequence = 1;
+
 bool parseHit(const nlohmann::json& j, Hit& out) {
     int64_t dmg, pct, hpAfter, hits = 0;
     if (!enemy_sync::detail::parseKey(j, out.key) ||
@@ -49,6 +51,7 @@ bool detail::sendHits(const char* stage, int layer, const Hit* hits, size_t coun
     nlohmann::json packet = {
         {"type", "ENEMY_DAMAGE"},
         {"sourceEnemyZoneEpoch", Session::instance().enemyZoneEpoch()},
+        {"sourceSequence", s_nextSourceSequence++},
         {"v", kVersion},
         // A fight sends several a second: kept out of the relay's log.
         {"quiet", true},
@@ -57,8 +60,7 @@ bool detail::sendHits(const char* stage, int layer, const Hit* hits, size_t coun
         {"hits", std::move(list)},
     };
     sync::stampPacket(packet, false);
-    Session::instance().send(packet);
-    return true;
+    return Session::instance().send(packet);
 }
 
 bool handlePacket(const std::string& type, const nlohmann::json& packet) {

@@ -330,6 +330,14 @@ checkpoint carries current authority health and does not reconcile two copies
 that independently fought the same enemy while disconnected.
 
 
+### Reliable enemy damage sequencing
+
+An updated sender assigns a strictly increasing `sourceSequence` to each reliable
+`ENEMY_DAMAGE` batch. The relay tracks the last accepted value per sender connection.
+Duplicate, older and malformed numbers are dropped. Different senders can use the
+same number. A legacy connection can omit the field until it sends a valid number.
+The relay checks the advertised stage generation before advancing the watermark.
+
 ### Combat snapshot sequencing
 
 The relay assigns a process-wide increasing `sequence` to each accepted

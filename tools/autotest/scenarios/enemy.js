@@ -718,6 +718,23 @@ module.exports = [
             { op: "expectEnemyGone", tag: "boko2", timeoutSec: 15 },
             { op: "expectEnemyDamage", ...(isA ? { sent: 2, received: 2, applied: 2, floored: 0, dropped: 0 } : { sent: 2, received: 3, applied: 3, floored: 1, dropped: 0 }) },
         ]),
+    {
+        ...pair("enemy-competing-hits",
+            "separate hits delivered with jitter lower both copies by the sum exactly once",
+            (isA, other) => [
+                ...damageOn(isA),
+                { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+                ...spawnAndSettle([["boko", BOKOBLIN, 0, 250]]),
+                health("boko", 40),
+                ...barrier("competing-hits-ready", other),
+                { op: "damageEnemy", tag: "boko", amount: isA ? 7 : 11 },
+                health("boko", 22),
+                { op: "wait", frames: 60 },
+                health("boko", 22, { timeoutSec: 0 }),
+                { op: "expectEnemyDamage", sent: 1, received: 1, applied: 1, dropped: 0 },
+            ]),
+        serverEnv: { TT_TEST_JITTER_MS: "120" },
+    },
     pair("enemy-damage-scale",
         "a hit converts between the sender's and our health percent, a rescale is never sent as damage, and the sender's health heals a hit we missed",
         (isA, other) => [

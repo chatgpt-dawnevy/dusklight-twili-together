@@ -129,3 +129,15 @@
   (`tests-coop/enemy-results/20261116-201054/enemy-chuchu-merged-copy/`).
 - Prochaine action : numéroter les messages de dégâts fiables au relais,
   puis vérifier deux coups reçus en concurrence et les retransmissions.
+- PR #13 fusionnée par squash (`d712ba6`). La relance des deux scénarios
+  Chuchu passe sur deux clients Linux avec le même paquet
+  (`tests-coop/enemy-results/20261116-201054/`).
+- Branche `feature/enemy-damage-sequence` : le relais écarte les lots de
+  dégâts retransmis par une même connexion. La compilation Linux et
+  les 128 tests du relais passent. Avec 0 à 120 ms de latence ajoutée,
+  chaque client applique exactement un coup distant : 40 - 7 - 11 = 22 PV
+  des deux côtés. `enemy-damage-share` et `enemy-bokoblin-health-reconnect`
+  passent aussi sur les deux clients. Preuves sous
+  `tests-coop/enemy-results/20261116-201404/`.
+- Prochaine action : déclencher et vérifier la fin native d’Argorok,
+  avec son acteur de scène, le conteneur et la sortie.
