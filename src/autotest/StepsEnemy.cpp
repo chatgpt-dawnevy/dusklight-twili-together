@@ -24,6 +24,8 @@
 #include "d/actor/d_a_e_s1.h"
 #include "d/actor/d_a_e_sm.h"
 #include "d/actor/d_a_e_rb.h"
+#include "d/actor/d_a_e_ym.h"
+#include "d/actor/d_a_kago.h"
 #include "d/d_bg_s_roof_chk.h"
 #include "d/d_com_inf_game.h"
 #include "d/d_stage.h"
@@ -781,6 +783,51 @@ std::optional<bool> enemySteps(const std::string& op, StepContext& ctx) {
             ctx.fail(fmt::format("spawner '{}' makes {}, step wants {}",
                 ctx.step.value("of", std::string{}), have, ctx.step.value("count", 0)));
         }
+        return false;
+    }
+
+    if (op == "tagRiverInsect") {
+        auto params = ctx.step.at("params").get<u32>();
+        auto* raw = fopAcM_Search([](void* proc, void* data) -> void* {
+            if (!fopAc_IsActor(proc)) return nullptr;
+            auto* actor = static_cast<fopAc_ac_c*>(proc);
+            return fopAcM_GetName(actor) == fpcNm_E_YM_e &&
+                fopAcM_GetParam(actor) == *static_cast<const u32*>(data) &&
+                fopAcM_IsExecuting(fopAcM_GetID(actor)) ? actor : nullptr;
+        }, &params);
+        if (raw != nullptr) {
+            sTags[tagOf(ctx)] = fopAcM_GetID(static_cast<fopAc_ac_c*>(raw));
+            return true;
+        }
+        if (ctx.seconds > ctx.timeout(15.0)) ctx.fail("tagRiverInsect: no matching placed insect");
+        return false;
+    }
+
+    if (op == "lockRiverInsect" || op == "eatRiverInsect" || op == "expectRiverTargetCleared") {
+        fopAc_ac_c* mount = nullptr;
+        fopAcM_SearchByName(fpcNm_KAGO_e, &mount);
+        const auto id = taggedId(ctx.step);
+        if (mount != nullptr && id != fpcM_ERROR_PROCESS_ID_e) {
+            auto& kargorok = *static_cast<daKago_c*>(mount);
+            if (op == "expectRiverTargetCleared") {
+                if (kargorok.getLockActor() == nullptr && runningActor(id) == nullptr) return true;
+            } else if (auto* actor = runningActor(id); actor != nullptr) {
+                auto& insect = *static_cast<daE_YM_c*>(actor);
+                if (insect.mAction == daE_YM_c::ACT_RIVER && insect.mpKago == &kargorok && insect.mpPath != nullptr) {
+                    if (op == "lockRiverInsect") {
+                        kargorok.setLockActor(actor);
+                    } else {
+                        // Start the native river finish immediately after a successful bite.
+                        if (kargorok.getLockActor() == actor) kargorok.setLockActor(nullptr);
+                        kargorok.setEatYm();
+                        insect.mMode = 3;
+                        insect.executeRiver();
+                    }
+                    return true;
+                }
+            }
+        }
+        if (ctx.seconds > ctx.timeout(10.0)) ctx.fail(op + ": river insect or Kargorok not in expected state");
         return false;
     }
 

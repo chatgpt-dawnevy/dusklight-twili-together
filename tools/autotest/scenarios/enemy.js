@@ -1,6 +1,6 @@
 // Enemy health multiplier and enemy-death sync; steps in StepsEnemy.cpp.
 
-const { STAGES, COMMON_CVARS, tt, waitStage, barrier, connect } = require("../lib");
+const { STAGES, STORY, COMMON_CVARS, tt, waitStage, barrier, connect } = require("../lib");
 
 // Bokoblin type 0 without switches: 40 health (d_a_e_oc.cpp daE_OC_c::create).
 const BOKOBLIN = { name: "E_oc", param: 0xffffff00, dy: 30 };
@@ -26,6 +26,13 @@ const HELMASAUR = { name: "E_mm", param: 0xffffffff, dy: 30 };
 const CHU_WORM = { name: "E_sm", param: 0xffffffff, dy: 30 };
 const RAT = { name: "E_ms", param: 0xffffff00, dy: 30 };
 const BOMBSKIT = { name: "E_cr", param: 0xffffffff, dy: 30 };
+const RIVER = { ...STORY.lanayruTwilight, stage: "F_SP112", room: 1, layer: 13, point: 4 };
+const RIVER_INSECTS = [
+    { params: 0x76ff0f07, tbox: 0x36 },
+    { params: 0x7aff0c07, tbox: 0x3a },
+    { params: 0x79ff0d07, tbox: 0x39 },
+    { params: 0x7dff1c07, tbox: 0x3d },
+];
 const SHADOW_INSECT = { name: "E_ym", param: 0x19ffff00, dy: 30 };
 // E_Make (d_a_obj_enemy_create.cpp): type, count, activate and deactivate switches, no loop end.
 const SPAWNER = (type, count, on, off) => ({
@@ -321,6 +328,61 @@ module.exports = [
             health("boko", 22, { timeoutSec: 0 }),
             ...(isA ? [{ op: "expectEnemyDamage", sent: 0, received: 1, applied: 1 }] : []),
         ]),
+    {
+        name: "enemy-kargorok-river-insects",
+        description: "four placed river insects share native defeats and release the progression switch",
+        timeoutSec: 150,
+        cvars: CVARS,
+        instances: ["A", "B"].map((name) => {
+            const isA = name === "A";
+            const other = isA ? "B" : "A";
+            return {
+                name,
+                start: RIVER,
+                launchDelayMs: isA ? 20000 : 1500,
+                steps: [
+                    waitStage(RIVER),
+                    ...connect,
+                    ...syncOn(isA),
+                    { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+                    ...RIVER_INSECTS.map(({ params }, i) => ({ op: "tagRiverInsect", params, tag: "river-" + i })),
+                    ...RIVER_INSECTS.flatMap(({ params, tbox }, i) => {
+                        const tag = "river-" + i;
+                        const eatsLocally = (i % 2 === 0) === isA;
+                        return [
+                            ...(eatsLocally ? [] : [{ op: "lockRiverInsect", tag }]),
+                            ...barrier("ready-" + i, other),
+                            ...(eatsLocally ? [
+                                { op: "eatRiverInsect", tag },
+                                { op: "expectEnemyGone", tag, timeoutSec: 10 },
+                                { op: "signal", name: "caught-" + i },
+                            ] : [
+                                { op: "waitSignal", name: "caught-" + i, from: other },
+                                // The stationary fixture cannot complete local flight cutscenes.
+                                { op: "endEvent" },
+                                { op: "expectRiverTargetCleared", tag },
+                                { op: "expectEnemyGone", tag, timeoutSec: 10 },
+                            ]),
+                            { op: "expectSwitch", room: 1, no: params >>> 24 },
+                            { op: "expectTearReleased", tbox, tickParentWait: true },
+                            ...barrier("released-" + i, other),
+                        ];
+                    }),
+                    { op: "expectSwitch", room: 1, no: 0x68 },
+                    { op: "expectEnemySync", sent: 2, received: 2, applied: 2, echoes: 0, expired: 0 },
+                    ...barrier("defeats-verified", other),
+                    ...RIVER_INSECTS.flatMap(({ tbox }, i) => [
+                        ...((i % 2 === 0) === isA ? [{ op: "collectTear", tbox }] : []),
+                        { op: "expectLightDrops", area: 2, num: i + 1 },
+                        ...barrier("collected-" + i, other),
+                    ]),
+                    { op: "expectTears" },
+                    ...barrier("done", other),
+                    { op: "quit" },
+                ],
+            };
+        }),
+    },
     pair("enemy-freezard-native-death",
         "each teammate shares a hit and a native Mini Freezard defeat",
         (isA, other) => [

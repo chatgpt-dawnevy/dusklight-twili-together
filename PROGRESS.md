@@ -87,3 +87,30 @@
   réellement placés, en vérifiant la cible détenue par le Kargorok et
   l'unicité des larmes. Le compteur et les récompenses restent à vérifier
   sur une séquence complète.
+- PR #11 fusionnée par squash (`2d68109`). Reconnexion et transfert de
+  l'autorité Bokoblin vérifiés sur deux clients Linux.
+- Inventaire de l'ISO local : 49 placements `E_ym` dans les archives de
+  salles et de scènes inspectées, dont quatre de type 7, tous à
+  `F_SP112`, salle 1, couche 13. Les TBOX correspondants sont
+  0x36, 0x3A, 0x39 et 0x3D. Leurs interrupteurs alimentent celui de
+  progression 0x68. Le profil `E_cr` est le Bombskit dans le SDK ;
+  les 27 placements relevés ont un octet bas 0xFF. La recherche
+  d'alias « crab » dans les acteurs placés n'a rien donné.
+- Branche `feature/river-tear-sync` : libérer la cible du Kargorok lors
+  de la défaite distante et tester l'activation des interrupteurs, la
+  disparition des acteurs et la collecte des larmes. La compile Linux et
+  les 127 tests du relais passent. Le premier scénario avec transition
+  de capture injectée n'a pas déclenché la défaite locale ; relance en
+  appelant la fin de capture native sur l'acteur placé.
+- Le scénario `enemy-kargorok-river-insects` passe chez les deux clients
+  Linux (Xvfb privé). Deux captures natives déclenchées par client, deux
+  défaites distantes sans écho, cible du Kargorok libérée, quatre larmes
+  collectées une fois chacune et interrupteur 0x68 déclenché dans les
+  deux parties. Le scénario stationnaire termine les événements locaux
+  et exécute les routines des acteurs suspendus. Le vol complet et la
+  concurrence sur la même larme pendant le vol restent à vérifier.
+  Preuves : `tests-coop/enemy-results/20261116-152628/`. Le scénario de
+  régression rat/Bombskit/insecte d'ombre passe également
+  (`20261116-152100/enemy-one-hit-and-shadow-insect/`).
+- Prochaine action : inventorier les profils classiques non couverts,
+  puis traiter les Chuchus en tenant compte des fusions et des gelées.

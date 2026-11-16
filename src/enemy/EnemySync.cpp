@@ -24,6 +24,7 @@
 #include "d/actor/d_a_e_vt.h"
 #include "d/actor/d_a_e_yk.h"
 #include "d/actor/d_a_e_ymb.h"
+#include "d/actor/d_a_kago.h"
 #include "d/actor/d_a_player.h"
 #include "d/d_bg_w.h"
 #include "d/d_camera.h"
@@ -346,8 +347,8 @@ bool isKillSyncable(s16 procName, u32 params) {
     case fpcNm_E_MS_e:   // Rat; variant 1 resets itself after a kill.
     case fpcNm_E_YG_e:   // Twilight Vermin; variant 1 resets itself after a kill.
         return (params & 0xFF) != 1;
-    case fpcNm_E_YM_e:   // Shadow Insect; river variant is tied to the local Kargorok sequence.
-        return (params & 0xFF) != 7;
+    case fpcNm_E_YM_e:   // Shadow Insect, including the river sequence.
+        return true;
     case fpcNm_E_RD_e: {
         // Bulblin, not King Bulblin (4, 5, 11, 12): scripted fights.
         const u8 arg0 = params & 0xFF;
@@ -443,6 +444,15 @@ const char* deferReason(fopAc_ac_c* ac) {
     return nullptr;
 }
 
+void releaseKargorokTarget(fopAc_ac_c* actor, const SpawnKey& key) {
+    if (key.procName != fpcNm_E_YM_e || (key.params & 0xFF) != 7) return;
+    fopAc_ac_c* mount = nullptr;
+    fopAcM_SearchByName(fpcNm_KAGO_e, &mount);
+    if (mount == nullptr) return;
+    auto& kargorok = *static_cast<daKago_c*>(mount);
+    if (kargorok.getLockActor() == actor) kargorok.setLockActor(nullptr);
+}
+
 void applyDeathSwitch(fopAc_ac_c* actor, const SpawnKey& key) {
     unsigned bit = 0xFF;
     if (key.procName == fpcNm_E_YM_e || key.procName == fpcNm_E_YK_e) {
@@ -528,6 +538,7 @@ Apply tryApply(Pending& p, const char*& why) {
             return Apply::Deferred;
         }
         r.remoteRemoved = true;
+        releaseKargorokTarget(ac, r.key);
         applyDeathSwitch(ac, r.key);
         spawnPuff(ac, layer, p.kill);
         ++s_stats.applied;

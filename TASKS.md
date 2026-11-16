@@ -19,6 +19,8 @@ Cocher un critère seulement après vérification de son périmètre complet.
   variantes. Vérifier les générations lors d'une mort suivie d'une nouvelle apparition.
 - [ ] Crépuscule : vérifier tous les insectes, y compris les variantes de la rivière, les larmes uniques
   et la progression après collecte simultanée, changement de zone et reconnexion.
+  Les quatre placements de rivière, leurs larmes et l’interrupteur 0x68
+  passent le scénario Linux à deux. Le vol complet reste à jouer.
 - [ ] Boss et mini-boss : inventorier les profils et acteurs secondaires. Tester chaque phase, projectile,
   vulnérabilité, scène et récompense. Vérifier une seule récompense et une sortie utilisable à deux.
 - [ ] Objets et progression : vérifier les acquisitions et dépenses dans les deux modes de stock, les
