@@ -309,5 +309,7 @@
   clients Linux ont confirmé les six ruptures et la seconde forme
   dans les deux ordres, avec un seul joueur déclenchant chaque coup.
   Preuves dans `tests-coop/boss-results/20261116-223811/`.
+  Les trois régressions Argorok, Fyrus et crapaud Mojo passent sous
+  Linux avec le même paquet (`tests-coop/boss-results/20261116-224114/`).
 - Prochaine action — partager les deux réactions non létales de la
   seconde forme et vérifier l’état des glaçons après chaque coup.
