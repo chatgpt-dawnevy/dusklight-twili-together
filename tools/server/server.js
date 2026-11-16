@@ -28,6 +28,7 @@ const TELEPORT_MIN_INTERVAL_MS = envNumber("TT_TELEPORT_INTERVAL_MS", 1000);
 const DAMAGE_MIN_INTERVAL_MS = envNumber("TT_DAMAGE_INTERVAL_MS", 200);
 const MAX_PVP_DAMAGE = 4; // quarter hearts per hit
 const ARGOROK_PROFILE = 0xf7;
+const BLIZZETA_PROFILE = 0x211;
 const FYRUS_PROFILE = 0x1d7;
 const DEKU_TOAD_PROFILE = 0x200;
 const PVP_KIND_COUNT = 12;
@@ -361,6 +362,10 @@ function isBossPhaseProposal(state, stageName, roomNo) {
     if (!state || state.roomNo !== roomNo) return false;
     if (state.procName === ARGOROK_PROFILE) {
         return stageName === "D_MN07A" && (state.armorBreaks === 1 || state.armorBreaks === 2);
+    }
+    if (state.procName === BLIZZETA_PROFILE) {
+        return stageName === "D_MN11A" && roomNo === 50 && Number.isInteger(state.armorBreaks) &&
+            state.armorBreaks >= 1 && state.armorBreaks <= 7;
     }
     if (state.procName === FYRUS_PROFILE) {
         return stageName === "D_MN04A" && Number.isInteger(state.knockdowns) &&

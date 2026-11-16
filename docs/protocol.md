@@ -323,8 +323,12 @@ he is in his native down action. Deku Toad snapshots carry the active bomb stun 
 Argorok carries the number of confirmed armor breaks (1 or 2). A matching replica
 can enter the corresponding native crash scene when its arena is ready. The second
 scene creates the native B_DRE actor and enables the vulnerable phase.
-A replica that confirms an Argorok armor break or Fyrus knockdown can set
-`phaseProposal` on one snapshot for that boss. The relay forwards it exclusively to the combat authority in that
+Blizzeta uses the same field. Values 1 through 6 describe its thinner ice
+models and 7 signals the native transition to the second form. A receiver
+runs each missing armor reaction in order, once its current reaction and
+any local event have finished.
+A replica that confirms an Argorok or Blizzeta armor break, or a Fyrus
+knockdown, can set `phaseProposal` on one snapshot for that boss. The relay forwards it exclusively to the combat authority in that
 arena. The authority applies the native transition and broadcasts its own
 confirmed phase through the normal snapshot path. A replica sends a Deku Toad
 bomb stun once when its native reaction starts, using reliable delivery. The

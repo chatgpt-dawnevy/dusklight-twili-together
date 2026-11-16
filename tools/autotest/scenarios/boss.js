@@ -544,3 +544,42 @@ module.exports.push(...["A", "B"].map(killer => ({
         };
     }),
 })));
+
+module.exports.push(...["A", "B"].map(first => ({
+    name: `boss-blizzeta-armor-${first.toLowerCase()}`,
+    description: "players alternate Ball and Chain reactions and both enter Blizzeta's native second form",
+    tags: ["boss-fight"],
+    timeoutSec: 320,
+    cvars: COMMON_CVARS,
+    instances: ["A", "B"].map(name => {
+        const other = name === "A" ? "B" : "A";
+        return {
+            name,
+            start: alive("snowpeakBoss"),
+            steps: [
+                ...connect,
+                at("D_MN11A"),
+                { op: "waitPeers", count: 1, sameStage: true },
+                ...(name === "A" ? [
+                    { op: "setRoomOption", name: "syncNPCs" },
+                    { op: "setRoomOption", name: "syncEnemyCombat" },
+                ] : []),
+                { op: "waitRoomOption", name: "syncNPCs" },
+                { op: "waitRoomOption", name: "syncEnemyCombat" },
+                ...fightStart,
+                { op: "expectBlizzetaArmor", armorBreaks: 0 },
+                ...barrier("first-form", other),
+                ...Array.from({ length: 7 }, (_, index) => {
+                    const armorBreaks = index + 1;
+                    const attacks = (index % 2 === 0) === (name === first);
+                    return [
+                        ...(attacks ? [{ op: "hitBlizzetaArmor", armorBreaks }] : []),
+                        { op: "expectBlizzetaArmor", armorBreaks },
+                        ...barrier(`armor-stage-${armorBreaks}`, other),
+                    ];
+                }).flat(),
+                { op: "quit" },
+            ],
+        };
+    }),
+})));
