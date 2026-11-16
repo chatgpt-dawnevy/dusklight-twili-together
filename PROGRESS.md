@@ -27,3 +27,9 @@
 - Prochaine action : vérifier deux enfants d'un même nid et une seconde vague,
   puis ajouter l'incarnation de zone aux clés réseau pour refuser les morts tardives
   après un rechargement. Tester ensuite l'attribution d'un coup simultané à l'autorité.
+- Le scénario `enemy-leever-sibling-identity` passe chez A et B. Les deux enfants
+  portent les identifiants 0xC000 et 0xC001. A élimine le second, les deux copies
+  gardent le premier vivant et l'interrupteur fermé. B élimine ensuite le premier
+  et les deux sauvegardes reçoivent l'interrupteur. Prochain test : génération
+  suivante d'un nid sans interrupteur, puis rechargement complet de la salle.
+  Preuves dans `tests-coop/enemy-results/20261116-144039/enemy-leever-sibling-identity/`.

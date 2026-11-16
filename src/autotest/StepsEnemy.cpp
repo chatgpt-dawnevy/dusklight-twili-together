@@ -787,17 +787,26 @@ std::optional<bool> enemySteps(const std::string& op, StepContext& ctx) {
     if (op == "tagLeeverChild") {
         const auto parent = sTags.find(ctx.step.value("of", std::string{}));
         if (parent != sTags.end()) {
-            auto* child = static_cast<fopAc_ac_c*>(fopAcM_Search(
-                [](void* raw, void* data) -> void* {
-                    if (!fopAc_IsActor(raw)) return nullptr;
-                    auto* actor = static_cast<fopAc_ac_c*>(raw);
-                    const auto id = *static_cast<const fpc_ProcID*>(data);
-                    if (fopAcM_GetName(actor) == fpcNm_E_RB_e && actor->parentActorID == id &&
-                        fopAcM_IsExecuting(fopAcM_GetID(actor))) return actor;
-                    return nullptr;
-                }, &parent->second));
-            if (child != nullptr) {
-                sTags[tagOf(ctx)] = fopAcM_GetID(child);
+            struct Children {
+                fpc_ProcID parent;
+                std::vector<fpc_ProcID> ids;
+            } children{parent->second, {}};
+            fopAcM_Search([](void* raw, void* data) -> void* {
+                if (!fopAc_IsActor(raw)) return nullptr;
+                auto* actor = static_cast<fopAc_ac_c*>(raw);
+                auto& children = *static_cast<Children*>(data);
+                const auto id = fopAcM_GetID(actor);
+                if (fopAcM_GetName(actor) == fpcNm_E_RB_e &&
+                    actor->parentActorID == children.parent && fopAcM_IsExecuting(id)) {
+                    children.ids.push_back(id);
+                }
+                return nullptr;
+            }, &children);
+            // In this test the nest issues its requests in one native loop.
+            std::sort(children.ids.begin(), children.ids.end());
+            const auto index = ctx.step.value("index", size_t{0});
+            if (index < children.ids.size()) {
+                sTags[tagOf(ctx)] = children.ids[index];
                 return true;
             }
         }
