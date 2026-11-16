@@ -1,6 +1,6 @@
 // World sync: flags, event bits, items and the server catch-up.
 
-const { MODS, STAGES, ITEMS, EVENTS, COMMON_CVARS, RANDOMIZER_MODE_CVARS, waitStage, barrier, meetIn, connect } =
+const { MODS, STAGES, ITEMS, EVENTS, COMMON_CVARS, RANDOMIZER_MODE_CVARS, warp, waitStage, barrier, meetIn, connect } =
     require("../lib");
 
 const WRONG_LAYOUT = "00000000deadbeef";
@@ -95,6 +95,71 @@ module.exports = [
                 ],
             },
         ],
+    },
+    {
+        name: "split-dungeon-progress",
+        description: "players merge progress from two dungeons and a disconnect, then reunite with both saves updated",
+        timeoutSec: 170,
+        cvars: COMMON_CVARS,
+        instances: ["A", "B"].map(name => {
+            const isA = name === "A";
+            const other = isA ? "B" : "A";
+            const ownDungeon = isA ? STAGES.forestTemple : STAGES.goronMines;
+            const otherDungeon = isA ? STAGES.goronMines : STAGES.forestTemple;
+            const ownSwitch = isA ? 0x69 : 0x6a;
+            const otherSwitch = isA ? 0x6a : 0x69;
+            return {
+                name,
+                start: ownDungeon,
+                steps: [
+                    waitStage(ownDungeon),
+                    ...connect,
+                    { op: "waitOwnWorldState" },
+                    { op: "waitPeers", count: 1 },
+                    { op: "expectPeers", count: 0, sameStage: true },
+                    { op: "expectSwitch", no: ownSwitch, set: false },
+                    { op: "expectSwitch", no: otherSwitch, set: false },
+                    ...barrier("separate-dungeons", other),
+                    { op: "setSwitch", no: ownSwitch },
+                    ...(isA ? [
+                        { op: "giveItem", item: ITEMS.boomerang },
+                    ] : [
+                        { op: "expectItem", item: ITEMS.boomerang },
+                    ]),
+                    ...barrier("initial-progress", other),
+                    ...(isA ? [
+                        { op: "wait", sec: 2 },
+                        { op: "expectPeers", count: 0 },
+                        { op: "setEventBit", no: EVENTS.shieldAttack },
+                    ] : [
+                        { op: "disconnect" },
+                        { op: "giveItem", item: ITEMS.slingshot },
+                        { op: "wait", sec: 5 },
+                        ...connect,
+                        { op: "waitOwnWorldState" },
+                    ]),
+                    { op: "waitPeers", count: 1 },
+                    { op: "expectItem", item: ITEMS.slingshot },
+                    { op: "expectEventBit", no: EVENTS.shieldAttack },
+                    { op: "expectSwitch", no: ownSwitch },
+                    { op: "expectSwitch", no: otherSwitch, set: false, timeoutSec: 0 },
+                    ...barrier("caught-up", other),
+                    warp(otherDungeon),
+                    waitStage(otherDungeon),
+                    { op: "expectSwitch", no: otherSwitch },
+                    { op: "expectSwitch", no: ownSwitch, set: false, timeoutSec: 0 },
+                    ...barrier("visited-other-dungeon", other),
+                    ...(isA ? [warp(STAGES.forestTemple)] : []),
+                    waitStage(STAGES.forestTemple),
+                    { op: "waitPeers", count: 1, sameStage: true },
+                    { op: "expectSwitch", no: 0x69 },
+                    { op: "expectItem", item: ITEMS.boomerang },
+                    { op: "expectItem", item: ITEMS.slingshot },
+                    ...barrier("reunited", other),
+                    { op: "quit" },
+                ],
+            };
+        }),
     },
     {
         name: "layout-mismatch",

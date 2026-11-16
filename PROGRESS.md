@@ -271,3 +271,14 @@
 - Prochaine action — vérifier que deux joueurs peuvent avancer dans
   des donjons différents, évoluer pendant une déconnexion, puis
   réunir leurs objets et interrupteurs en se retrouvant.
+- PR #22 fusionnée par squash (`629cb2a`).
+- Branche `test/split-dungeon-progress`. Deux clients Linux progressent
+  au Temple Sylvestre et dans les Mines Goron. Après la déconnexion
+  d'un joueur, les deux récupèrent ses objets et l'événement déclenché
+  par son partenaire. En échangeant de donjon, chacun retrouve
+  l'interrupteur persistant de l'autre, puis tous deux se rejoignent
+  avec les deux objets. Les interrupteurs DAN utilisés lors du premier
+  essai expirent à la sortie. Le scénario vérifie les interrupteurs
+  persistants et l'isolation entre les deux tables de sauvegarde.
+  Preuves dans `tests-coop/results/20261116-221420/split-dungeon-progress/`.
+- Prochaine action — reprendre la validation de la défaite de Blizzeta.
