@@ -47,7 +47,7 @@ Audit baseline: 2026-11-16, Twili-Together 0.5.0, protocol 5.
 | Fyrus / E_FM | Native ending; knockdown counter | Verified Linux native vulnerable phase. Chains, heat attacks and full combat remain open. |
 | Deku Toad / E_DT | Native ending, nonlethal health, bomb stun | Verified Linux scripted bomb reaction. Intro, spawned tadpoles and full encounter remain open. |
 | Twilit Bloat / E_YMB | Native ending | Full phases, spawning and tears sequence unverified. |
-| Argorok / B_DR | Nonlethal damage | Native kill starts a separate B_DRE child and timed exit. Flight, phase transitions and child lifecycle are unverified. |
+| Argorok / B_DR | Nonlethal damage and native ending | Two Linux test clients verified B_DRE, mirror, one shared heart and both exits with A landing the final hit. The fixture enters the second phase. Flight and phase transitions remain open. |
 | Death Sword / E_VT | Native ending | Linux fixture bypassed opening. Both clients reached native clear in both directions. No full fight validation. |
 | Dangoro / E_GOB | Native ending | Linux fixture placed both copies in combat. Both finished the native scene and opened the exit in both directions. |
 | Blizzeta / B_YO | Experimental ending reverted by 8ea3ea3 | Both clients entered the ending but timed out before the heart and warp were confirmed. |

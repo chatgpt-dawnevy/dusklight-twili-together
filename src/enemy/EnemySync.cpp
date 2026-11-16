@@ -24,6 +24,7 @@
 #include "d/actor/d_a_e_vt.h"
 #include "d/actor/d_a_e_yk.h"
 #include "d/actor/d_a_e_ymb.h"
+#include "d/actor/d_a_b_dr.h"
 #include "d/actor/d_a_e_sm2.h"
 #include "d/actor/d_a_kago.h"
 #include "d/actor/d_a_player.h"
@@ -232,6 +233,32 @@ void dangoroKill(fopAc_ac_c* ac) {
     goron.field_0x6d6 = 2;
 }
 
+// Argorok's last weak-point hit starts the separate native B_DRE ending.
+constexpr int kArgorokWeakHit = 3;
+constexpr int kArgorokDamageDemo = 11;
+constexpr int kArgorokEnding = 1000;
+
+bool argorokIsDead(const fopAc_ac_c* ac) {
+    const auto& dragon = *static_cast<const daB_DR_c*>(ac);
+    return dragon.health <= 0 && dragon.mActionMode == kArgorokWeakHit &&
+        dragon.mMoveMode == kArgorokEnding;
+}
+
+bool argorokReady(const fopAc_ac_c* ac) {
+    const auto& dragon = *static_cast<const daB_DR_c*>(ac);
+    return dragon.arg0 == 1 && dragon.mActionMode < kArgorokDamageDemo &&
+        !dComIfGp_checkPlayerStatus1(0, 0x10000);
+}
+
+void argorokKill(fopAc_ac_c* ac) {
+    auto& dragon = *static_cast<daB_DR_c*>(ac);
+    dragon.mActionMode = kArgorokWeakHit;
+    dragon.mMoveMode = 0;
+    dragon.health = 0;
+    dragon.field_0x7d0 = 0;
+    dragon.onCutDownHitFlg();
+}
+
 bool chuHasPlacedColor(const fopAc_ac_c* ac, const e_sm2_class& chu) {
     return chu.type == ((fopAcM_GetParam(ac) >> 4) & 0xF);
 }
@@ -261,6 +288,7 @@ void chuBecomeJelly(fopAc_ac_c* ac) {
 }
 
 constexpr InPlaceDeath kInPlace[] = {
+    {fpcNm_B_DR_e, argorokIsDead, argorokKill, argorokReady, false},
     {fpcNm_E_SM2_e, chuIsJelly, chuBecomeJelly, nullptr, false},
     {fpcNm_E_GOB_e, dangoroIsDead, dangoroKill, dangoroReady, false},
     {fpcNm_E_VT_e, deathSwordIsDead, deathSwordKill, deathSwordReady, false},
@@ -371,6 +399,8 @@ bool isKillSyncable(s16 procName, u32 params) {
     case fpcNm_E_BS_e:   // Stalkin (no puff: markDefeated)
     case fpcNm_E_HZ_e:   // Tile Worm (defeated in place)
         return true;
+    case fpcNm_B_DR_e:   // The main Argorok actor, excluding its part variants.
+        return (params & 0xFF) == 0;
     case fpcNm_E_SM2_e: {
         const unsigned variant = params & 0xF;
         const unsigned color = (params >> 4) & 0xF;
