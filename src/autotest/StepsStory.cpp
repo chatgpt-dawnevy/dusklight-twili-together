@@ -552,11 +552,16 @@ std::optional<bool> collectTear(StepContext& ctx) {
     if (!ctx.begun) {
         const auto& tears = liveTears();
         const size_t nth = static_cast<size_t>(ctx.step.value("nth", 0));
-        if (nth >= tears.size()) {
-            ctx.fail(fmt::format("collectTear: no tear {} (live: {})", nth, tearList()));
+        const int tbox = ctx.step.value("tbox", -1);
+        const auto found = std::find_if(tears.begin(), tears.end(),
+            [&](daObjDrop_c* tear) { return tear->getSave() == tbox; });
+        daObjDrop_c* tear = tbox >= 0 ? (found == tears.end() ? nullptr : *found) :
+            (nth < tears.size() ? tears[nth] : nullptr);
+        if (tear == nullptr) {
+            ctx.fail(fmt::format("collectTear: no matching tear (index {}, TBOX {}, live: {})",
+                nth, tbox, tearList()));
             return false;
         }
-        daObjDrop_c* tear = tears[nth];
         sTearTbox = tear->getSave();
         sTearPicked = false;
         sTearCountBefore = dComIfGs_getLightDropNum(static_cast<u8>(area));
@@ -1197,6 +1202,25 @@ std::optional<bool> storySteps(const std::string& op, StepContext& ctx) {
 
     if (op == "collectTear") {
         return collectTear(ctx);
+    }
+
+    if (op == "expectTearReleased") {
+        const auto& tears = liveTears();
+        const int tbox = step.at("tbox").get<int>();
+        const auto found = std::find_if(tears.begin(), tears.end(),
+            [&](daObjDrop_c* tear) { return tear->getSave() == tbox; });
+        if (found != tears.end()) {
+            daObjDrop_c& tear = **found;
+            // The stationary river fixture leaves distant actors suspended.
+            if (step.value("tickParentWait", false) && tear.mMode == daObjDrop_c::MODE_PARENT_WAIT_e) {
+                tear.modeParentWait();
+            }
+            if (tear.mMode == daObjDrop_c::MODE_WAIT_e) return true;
+        }
+        if (ctx.seconds > ctx.timeout(12.0)) {
+            ctx.fail(fmt::format("expectTearReleased: TBOX {} is not collectible (live: {})", tbox, tearList()));
+        }
+        return false;
     }
 
     // countTears marks the live tear count; expectTears waits for mark + delta.
