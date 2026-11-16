@@ -341,6 +341,10 @@ checkpoint carries current authority health and does not reconcile two copies
 that independently fought the same enemy while disconnected.
 
 
+A placed Baby Gohma's `ENEMY_DEFEATED` entry can include `defeatSwitch: true`.
+The replica derives the switch from the matched actor's placement parameters.
+A statue defeat omits this flag because its native reaction does not set the switch.
+
 ### Reliable enemy damage sequencing
 
 An updated sender assigns a strictly increasing `sourceSequence` to each reliable

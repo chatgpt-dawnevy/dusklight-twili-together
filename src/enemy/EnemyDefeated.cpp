@@ -45,6 +45,8 @@ bool parseKill(const nlohmann::json& k, Kill& out) {
                      0;
     const auto zone = k.find("zoneActor");
     out.zoneActor = zone != k.end() && zone->is_boolean() && zone->get<bool>();
+    const auto defeatSwitch = k.find("defeatSwitch");
+    out.defeatSwitch = defeatSwitch != k.end() && defeatSwitch->is_boolean() && defeatSwitch->get<bool>();
     return true;
 }
 
@@ -171,6 +173,7 @@ bool detail::sendDefeated(const char* stage, int layer, const Kill* kills, size_
         j["fxSize"] = static_cast<int>(k.fxSize);
         j["fxType"] = static_cast<int>(k.fxType);
         j["zoneActor"] = k.zoneActor;
+        if (k.defeatSwitch) j["defeatSwitch"] = true;
         list.push_back(std::move(j));
     }
     nlohmann::json packet = {

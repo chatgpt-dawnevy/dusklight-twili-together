@@ -21,6 +21,8 @@ Cocher un critère seulement après vérification de son périmètre complet.
   à l’état de gelée des petits Chuchus a été testé sur deux clients Linux.
 - [ ] Ennemis à un PV : tester les morts natives des rats, Leevers, Bombskits, Keese d'ombre et autres
   variantes. Vérifier les générations lors d'une mort suivie d'une nouvelle apparition.
+  Les bébés Gohma placés à 1 PV partagent leurs défaites à l’épée et
+  à la statue. Leurs interrupteurs ont un test ciblé à deux clients.
 - [ ] Crépuscule : vérifier tous les insectes, y compris les variantes de la rivière, les larmes uniques
   et la progression après collecte simultanée, changement de zone et reconnexion.
   Les quatre placements de rivière, leurs larmes et l’interrupteur 0x68

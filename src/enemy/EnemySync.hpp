@@ -33,6 +33,8 @@ struct Kill {
     uint8_t fxType = 0;
     // The killer set the enemy's dSv_zoneActor_c bit.
     bool zoneActor = false;
+    // Some native defeats set the placement's switch only for certain attacks.
+    bool defeatSwitch = false;
 };
 
 // ENEMY_DEFEATED carries its own version; v2 added dup.

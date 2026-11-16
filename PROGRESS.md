@@ -242,3 +242,15 @@
   enfants créés à l’exécution demandent leurs propres règles.
 - Prochaine action : détecter les morts natives des bébés Gohma
   placés à 1 PV et préserver les différences entre l’épée et la statue.
+- PR #20 fusionnée par squash (`4e631ce`).
+- Branche `feature/baby-gohma-defeat`. Les deux clients Linux exécutent
+  une défaite native chacun à partir de l’entrée de réaction. La défaite
+  à l’épée active l’interrupteur des deux côtés. Le coup de statue laisse
+  l’autre interrupteur intact. Une simple suppression reste locale.
+  Le scénario désactive la synchronisation du monde pour isoler le
+  paquet de défaite. Compilation Linux et 129 tests du relais réussis.
+  Le scénario rat/Bombskit/insecte d’ombre passe également. Preuves dans
+  `tests-coop/enemy-results/20261116-210006/`.
+- Prochaine action : reproduire puis corriger les pertes WebSocket
+  observées pendant l’attente d’un autre joueur, avant d’étendre les
+  tests de progression séparée.

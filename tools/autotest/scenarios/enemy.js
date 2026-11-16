@@ -13,6 +13,7 @@ const TILE_WORM = { name: "E_hz", param: 0xffffff13, dy: 0 };
 // Bokoblin type 0 with defeated switch 0x12.
 const BOKO_SW = { name: "E_oc", param: 0xff12ff00, dy: 30 };
 // Defeated switches 0x14, 0x15 and 0x16 (Young Gohma and Deku Baba: top byte, Tektite: low byte).
+const BABY_GOHMA = { name: "E_gm", param: 0xffff4602, dy: 30 };
 const GOHMA = { name: "E_kg", param: 0x14ffff00, dy: 30 };
 const TEKTITE_SW = { name: "E_tt", param: 0xffffff15, dy: 30 };
 const DEKU_BABA = { name: "E_db", param: 0x16ffff00, dy: 0 };
@@ -384,6 +385,34 @@ module.exports = [
             };
         }),
     },
+    pair("enemy-baby-gohma-one-hit",
+        "one-hit Baby Gohmas die on both clients and only the sword defeat sets its switch",
+        (isA, other) => [
+            ...syncOn(isA),
+            ...(isA ? [{ op: "setRoomOption", name: "syncWorldState", value: false }] : []),
+            { op: "waitRoomOption", name: "syncWorldState", value: false },
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...spawnAndSettle([
+                ["sword", BABY_GOHMA, -190, 250],
+                ["statue", { ...BABY_GOHMA, param: 0xffff4702 }, 190, 250],
+                ["plain", { ...BABY_GOHMA, param: 0xffffff02 }, 0, 550],
+            ]),
+            { op: "expectEnemyHealth", tag: "sword", max: 1 },
+            { op: "expectEnemyHealth", tag: "statue", max: 1 },
+            ...barrier("gohma-ready", other),
+            ...(isA ? [
+                { op: "killEnemy", how: "gohmaSword", tag: "sword" },
+                { op: "deleteEnemy", tag: "plain" },
+            ] : [
+                { op: "killEnemy", how: "gohmaStatue", tag: "statue" },
+            ]),
+            { op: "expectEnemyGone", tag: "sword" },
+            { op: "expectEnemyGone", tag: "statue" },
+            { op: "expectSwitch", no: 0x46 },
+            { op: "expectSwitch", no: 0x47, set: false, timeoutSec: 0 },
+            ...(isA ? [] : [{ op: "expectEnemyHealth", tag: "plain", max: 1, timeoutSec: 0 }]),
+            { op: "expectEnemySync", sent: 1, received: 1, applied: 1, echoes: 0, expired: 0 },
+        ]),
     pair("enemy-chuchu-jelly",
         "small placed Chus retain their native catchable jelly on both clients",
         (isA, other) => [
