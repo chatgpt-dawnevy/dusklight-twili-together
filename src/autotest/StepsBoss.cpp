@@ -15,6 +15,7 @@
 #include "d/d_kankyo.h"
 #include "m_Do/m_Do_ext.h"
 
+#include "d/actor/d_a_door_mbossL1.h"
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_vt.h"
 #include "d/actor/d_a_b_dr.h"
@@ -22,6 +23,7 @@
 #include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_gob.h"
 #include "d/actor/d_a_obj_life_container.h"
+#include "d/actor/d_a_player.h"
 #include "d/d_com_inf_game.h"
 #include "d/d_item_data.h"
 #include "d/d_save.h"
@@ -328,6 +330,10 @@ std::optional<bool> killBoss(StepContext& ctx) {
         fm->health = 0;
         fm->mAction = kFmActionEnd;
         fm->mMode = 0;
+    } else if (how == "real" && profile == fpcNm_E_DT_e) {
+        auto& toad = *static_cast<daE_DT_c*>(b);
+        toad.health = 0;
+        toad.setActionMode(9, 0);  // ACT_DEATH
     } else if (how == "real" && profile == fpcNm_B_DR_e) {
         auto& dragon = *static_cast<daB_DR_c*>(b);
         dragon.health = 1;
@@ -620,6 +626,25 @@ std::optional<bool> bossSteps(const std::string& op, StepContext& ctx) {
 
     if (op == "killBoss") {
         return killBoss(ctx);
+    }
+
+    if (op == "exitToadArena") {
+        if (std::strncmp(currentStage(), "D_MN01", 8) == 0 &&
+            dStage_roomControl_c::getStayNo() == 9) return true;
+
+        auto* door = static_cast<daMBdoorL1_c*>(fopAcM_SearchByName(fpcNm_L1MBOSS_DOOR_e));
+        auto* player = daPy_getPlayerActorClass();
+        if (door != nullptr && player != nullptr && !dComIfGp_event_runCheck() &&
+            !dComIfGp_isEnableNextStage()) {
+            const s16 side = door->current.angle.y + (door->field_0x5df == 1 ? 0x7fff : 0);
+            cXyz at(door->current.pos.x + 85.0f * cM_ssin(side), door->current.pos.y,
+                door->current.pos.z + 85.0f * cM_scos(side));
+            player->setPlayerPosAndAngle(&at, static_cast<s16>(side - 0x7fff), TRUE);
+            // The gate still uses the game's own switch and stop checks.
+            if (door->checkOpen()) fopAcM_orderDoorEvent(player, door, 0, 0);
+        }
+        if (ctx.seconds > ctx.timeout(40.0)) ctx.fail("exitToadArena: the native door did not open");
+        return false;
     }
 
     if (op == "bossWatch") {

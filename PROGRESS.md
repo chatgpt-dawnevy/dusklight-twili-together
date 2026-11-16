@@ -228,3 +228,17 @@
   dans `tests-coop/boss-results/20261116-205034/`.
 - Prochaine action : vérifier la défaite du crapaud Mojo, son coffre
   de grappin et la sortie de l’arène dans les deux directions.
+- PR #19 fusionnée par squash (`8c5eb65`).
+- Branche `test/toad-native-reward`. Le scénario A vainqueur confirme
+  la défaite native du crapaud Mojo sur les deux clients, la disparition
+  du boss et le drapeau de mini-boss. A ouvre le coffre natif une seule
+  fois. B obtient le grappin et ne peut pas rouvrir le coffre. Les deux
+  clients empruntent la porte vers `D_MN01`, salle 9.
+  Le scénario inverse passe également. Compilation Linux et
+  129 tests du relais réussis. Preuves sous
+  `tests-coop/boss-results/20261116-205524/`.
+- Le relevé de l’ISO identifie 79 bébés Gohma placés de type 2
+  dans quatre salles du Temple du Temps. Les formes de boss et les
+  enfants créés à l’exécution demandent leurs propres règles.
+- Prochaine action : détecter les morts natives des bébés Gohma
+  placés à 1 PV et préserver les différences entre l’épée et la statue.

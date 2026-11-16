@@ -32,7 +32,9 @@ Cocher un critère seulement après vérification de son périmètre complet.
   déclenchées par l’un ou l’autre joueur mènent les deux clients à
   la phase vulnérable dans les scénarios. Les deux directions de mise à
   terre de Fyrus et d’étourdissement du crapaud Mojo passent également.
-  Les combats complets restent à jouer.
+  La défaite du crapaud Mojo, un seul coffre de grappin et la porte de
+  sortie sont vérifiés dans les deux directions. Les combats complets
+  restent à jouer.
 - [ ] Objets et progression : vérifier les acquisitions et dépenses dans les deux modes de stock, les
   achats, bouteilles, échanges, clés, checks randomisés et exploration séparée suivie d'un rattrapage.
 - [ ] Robustesse : exécuter les suites existantes et les régressions avec transferts, retransmissions,
