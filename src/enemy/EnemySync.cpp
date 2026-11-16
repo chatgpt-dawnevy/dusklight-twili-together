@@ -24,6 +24,7 @@
 #include "d/actor/d_a_e_vt.h"
 #include "d/actor/d_a_e_yk.h"
 #include "d/actor/d_a_e_ymb.h"
+#include "d/actor/d_a_e_sm2.h"
 #include "d/actor/d_a_kago.h"
 #include "d/actor/d_a_player.h"
 #include "d/d_bg_w.h"
@@ -231,7 +232,36 @@ void dangoroKill(fopAc_ac_c* ac) {
     goron.field_0x6d6 = 2;
 }
 
+bool chuHasPlacedColor(const fopAc_ac_c* ac, const e_sm2_class& chu) {
+    return chu.type == ((fopAcM_GetParam(ac) >> 4) & 0xF);
+}
+
+bool chuIsJelly(const fopAc_ac_c* ac) {
+    const auto& chu = *reinterpret_cast<const e_sm2_class*>(ac);
+    return chu.action == ACTION_FAIL && chuHasPlacedColor(ac, chu);
+}
+
+bool chuCanBecomeJelly(const fopAc_ac_c* ac) {
+    const auto& chu = *reinterpret_cast<const e_sm2_class*>(ac);
+    return chu.sizetype == 0 && !chu.is_roof && chuHasPlacedColor(ac, chu) &&
+        (chu.action == ACTION_NORMAL_MOVE || chu.action == ACTION_ATTACK);
+}
+
+void chuBecomeJelly(fopAc_ac_c* ac) {
+    // The smallest Chu enters its native jelly state after a hit.
+    auto& chu = *reinterpret_cast<e_sm2_class*>(ac);
+    chu.action = ACTION_FAIL;
+    chu.mode = 0;
+    chu.field_0x6b0 = 1.5f;
+    chu.timers[0] = 0;
+    chu.isPiece = TRUE;
+    ac->speed.y = 20.0f;
+    chu.field_0xfd4 = 1;
+    fopAcM_OffStatus(ac, fopAcStts_CULL_e);
+}
+
 constexpr InPlaceDeath kInPlace[] = {
+    {fpcNm_E_SM2_e, chuIsJelly, chuBecomeJelly, nullptr, false},
     {fpcNm_E_GOB_e, dangoroIsDead, dangoroKill, dangoroReady, false},
     {fpcNm_E_VT_e, deathSwordIsDead, deathSwordKill, deathSwordReady, false},
     {fpcNm_E_SB_e, shellBladeIsDead, shellBladeKill, nullptr, false},
@@ -341,6 +371,15 @@ bool isKillSyncable(s16 procName, u32 params) {
     case fpcNm_E_BS_e:   // Stalkin (no puff: markDefeated)
     case fpcNm_E_HZ_e:   // Tile Worm (defeated in place)
         return true;
+    case fpcNm_E_SM2_e: {
+        const unsigned variant = params & 0xF;
+        const unsigned color = (params >> 4) & 0xF;
+        const unsigned size = (params >> 8) & 0xFF;
+        // Stable colors only, on independently placed, non-respawning small Chus.
+        return (variant == 0 || variant == 1 || variant == 0xF) &&
+            (color <= TYPE_PURPLE || color == TYPE_BLACK) &&
+            (variant == 1 || size == 0 || size == 0xFF);
+    }
     case fpcNm_E_FZ_e:   // Blizzeta owns and controls variant 3.
         return (params & 0xFF) != 3;
     case fpcNm_E_NZ_e:   // Ghoul Rat; variant 1 reappears at its spawn.
@@ -516,6 +555,9 @@ Apply tryApply(Pending& p, const char*& why) {
         {
             why = "the local boss fight is not ready";
             return Apply::Deferred;
+        }
+        if (r.key.procName == fpcNm_E_SM2_e && !chuCanBecomeJelly(ac)) {
+            return Apply::Obsolete;
         }
         if (r.inPlace != nullptr) {
             r.inPlace->kill(ac);

@@ -23,6 +23,7 @@ const GOHMA_ROOF = { name: "E_kg", param: 0x18ffff01, onRoof: true, dy: -20 };
 const SHADOW_BEAST = { name: "E_s1", param: 0xffffffff, dy: 30 };
 const STALFOS = { name: "E_sf", param: 0xffffffff, angleZ: 0xff, dy: 30 };
 const HELMASAUR = { name: "E_mm", param: 0xffffffff, dy: 30 };
+const SMALL_RED_CHU = { name: "E_sm2", param: 0xff00001f, dy: 30 };
 const CHU_WORM = { name: "E_sm", param: 0xffffffff, dy: 30 };
 const RAT = { name: "E_ms", param: 0xffffff00, dy: 30 };
 const BOMBSKIT = { name: "E_cr", param: 0xffffffff, dy: 30 };
@@ -383,6 +384,39 @@ module.exports = [
             };
         }),
     },
+    pair("enemy-chuchu-jelly",
+        "small placed Chus retain their native catchable jelly on both clients",
+        (isA, other) => [
+            ...syncOn(isA),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...spawnAndSettle([["red-a", SMALL_RED_CHU, -290, 250],
+                ["red-b", SMALL_RED_CHU, 290, 250], ["plain", SMALL_RED_CHU, 0, -250]]),
+            ...barrier("chus-ready", other),
+            { op: "killEnemy", how: "chuJelly", tag: isA ? "red-a" : "red-b" },
+            ...(isA ? [{ op: "deleteEnemy", tag: "plain" }] : []),
+            { op: "expectChuJelly", tag: isA ? "red-b" : "red-a" },
+            { op: "expectEnemyGone", tag: "red-a", timeoutSec: 15 },
+            { op: "expectEnemyGone", tag: "red-b", timeoutSec: 15 },
+            ...(isA ? [] : [{ op: "expectEnemyHealth", tag: "plain", timeoutSec: 0 }]),
+            { op: "expectEnemySync", sent: 1, received: 1, applied: 1, echoes: 0, expired: 0 },
+        ]),
+    pair("enemy-chuchu-merged-copy",
+        "a remote defeat for a small Chu cannot destroy the locally merged survivor",
+        (isA, other) => [
+            ...syncOn(isA),
+            { op: "waitPeers", count: 1, sameStage: true, timeoutSec: 60 },
+            ...spawnAndSettle([["red", SMALL_RED_CHU, 0, 250]]),
+            ...(isA ? [] : [{ op: "setChuMergedSize", tag: "red" }]),
+            ...barrier("chus-ready", other),
+            ...(isA ? [
+                { op: "killEnemy", how: "chuJelly", tag: "red" },
+                { op: "expectEnemyGone", tag: "red", timeoutSec: 15 },
+                { op: "expectEnemySync", sent: 1, received: 0 },
+            ] : [
+                { op: "expectEnemySync", sent: 0, received: 1, applied: 0, expired: 1 },
+                { op: "expectEnemyHealth", tag: "red", timeoutSec: 0 },
+            ]),
+        ]),
     pair("enemy-freezard-native-death",
         "each teammate shares a hit and a native Mini Freezard defeat",
         (isA, other) => [

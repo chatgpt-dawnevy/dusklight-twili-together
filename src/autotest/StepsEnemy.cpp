@@ -23,6 +23,7 @@
 #include "d/actor/d_a_e_oc.h"
 #include "d/actor/d_a_e_s1.h"
 #include "d/actor/d_a_e_sm.h"
+#include "d/actor/d_a_e_sm2.h"
 #include "d/actor/d_a_e_rb.h"
 #include "d/actor/d_a_e_ym.h"
 #include "d/actor/d_a_kago.h"
@@ -225,6 +226,15 @@ std::optional<bool> killEnemy(StepContext& ctx) {
     }
     if (how == "shadowKeeseNative" && fopAcM_GetName(ac) == fpcNm_E_YK_e) {
         startShadowKeeseNativeDeath(*ac);
+        return true;
+    }
+    if (how == "chuJelly" && fopAcM_GetName(ac) == fpcNm_E_SM2_e) {
+        auto& chu = *reinterpret_cast<e_sm2_class*>(ac);
+        chu.action = ACTION_FAIL;
+        chu.mode = 0;
+        chu.field_0x6b0 = 1.5f;
+        chu.isPiece = TRUE;
+        ac->speed.y = 20.0f;
         return true;
     }
     if (how == "shellBlade") {
@@ -929,6 +939,28 @@ std::optional<bool> enemySteps(const std::string& op, StepContext& ctx) {
             return false;
         }
         return true;
+    }
+
+    if (op == "setChuMergedSize") {
+        auto* ac = runningActor(taggedId(ctx.step));
+        if (ac == nullptr || fopAcM_GetName(ac) != fpcNm_E_SM2_e) {
+            ctx.fail("setChuMergedSize: no active Chu for " + tagOf(ctx));
+            return false;
+        }
+        // A completed local merge changes the native size while keeping the actor ID.
+        auto& chu = *reinterpret_cast<e_sm2_class*>(ac);
+        chu.sizetype = 1;
+        return true;
+    }
+
+    if (op == "expectChuJelly") {
+        auto* ac = runningActor(taggedId(ctx.step));
+        if (ac != nullptr && fopAcM_GetName(ac) == fpcNm_E_SM2_e) {
+            const auto& chu = *reinterpret_cast<const e_sm2_class*>(ac);
+            if (chu.action == ACTION_FAIL && chu.mode == 1 && chu.isPiece) return true;
+        }
+        if (ctx.seconds > ctx.timeout(5.0)) ctx.fail("expectChuJelly: no catchable jelly for " + tagOf(ctx));
+        return false;
     }
 
     if (op == "expectEnemyGone") {

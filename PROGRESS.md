@@ -114,3 +114,18 @@
   (`20261116-152100/enemy-one-hit-and-shadow-insect/`).
 - Prochaine action : inventorier les profils classiques non couverts,
   puis traiter les Chuchus en tenant compte des fusions et des gelées.
+- PR #12 fusionnée par squash (`d935939`).
+- Relevé croisé des profils `fopAc_ENEMY_e` du SDK et des placements de l’ISO :
+  87 profils ennemis placés. Sur la base de la PR #12, 41 ne figurent dans
+  aucune des listes de partage des dégâts ou des défaites. Le relevé des
+  placements ne couvre pas les acteurs créés uniquement à l’exécution.
+- Branche `feature/chuchu-defeat` : un petit Chuchu placé qui passe à
+  l’état de gelée déclenche chez le coéquipier la même phase native.
+  Les copies agrandies ou ayant changé de couleur ne sont pas remplacées
+  par une gelée distante. Les grandes formes, la fusion, la division et
+  les gelées en bouteille restent à synchroniser. Les deux clients
+  Linux ont réussi `enemy-chuchu-jelly` et les 127 tests du relais
+  passent. Le scénario de copie agrandie passe sur deux clients
+  (`tests-coop/enemy-results/20261116-201054/enemy-chuchu-merged-copy/`).
+- Prochaine action : numéroter les messages de dégâts fiables au relais,
+  puis vérifier deux coups reçus en concurrence et les retransmissions.
