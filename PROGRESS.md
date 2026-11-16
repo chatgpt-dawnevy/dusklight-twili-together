@@ -254,3 +254,20 @@
 - Prochaine action : reproduire puis corriger les pertes WebSocket
   observées pendant l’attente d’un autre joueur, avant d’étendre les
   tests de progression séparée.
+- PR #21 fusionnée par squash (`e3c29c4`).
+- Branche `fix/websocket-idle-heartbeat`. Le test de référence a reproduit
+  la coupure après environ 15 s. Le premier client a repris la même partie
+  avec un nouvel identifiant. Le nouveau message de maintien WebSocket
+  passe les 130 tests du relais, dont le maintien d’une connexion qui
+  ne renvoie pas de Pong et l’expiration d’un client devenu silencieux.
+  Compilation Linux réussie. Tests en jeu en cours sur l’attente,
+  la reconnexion après arrêt du relais et TCP.
+- Le client WebSocket corrigé est resté connecté pendant les 35 s
+  d’attente avec son identifiant initial. Preuves dans
+  `tests-coop/results/20261116-220810/ws-idle-heartbeat/`.
+- Après un arrêt et redémarrage du relais, les deux clients WebSocket
+  se reconnectent et se retrouvent. Les deux clients TCP passent
+  également le scénario de présence.
+- Prochaine action — vérifier que deux joueurs peuvent avancer dans
+  des donjons différents, évoluer pendant une déconnexion, puis
+  réunir leurs objets et interrupteurs en se retrouvant.

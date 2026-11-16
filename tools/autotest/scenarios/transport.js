@@ -1,6 +1,6 @@
 // Transports and reconnecting (src/net/).
 
-const { STAGES, COMMON_CVARS, meetIn, connect } = require("../lib");
+const { STAGES, COMMON_CVARS, waitStage, meetIn, connect } = require("../lib");
 
 // The relay dies on A's signal and comes back: dummies return without a connect step.
 const afterRestart = (other) => [
@@ -11,6 +11,24 @@ const afterRestart = (other) => [
 ];
 
 module.exports = [
+    {
+        name: "ws-idle-heartbeat",
+        description: "one player stays connected while waiting alone through several relay heartbeats",
+        timeoutSec: 65,
+        cvars: COMMON_CVARS,
+        rejectLog: [/\[net\] connection lost/, /connected as client [2-9]/],
+        instances: [{
+            name: "A",
+            start: STAGES.forestTemple,
+            steps: [
+                waitStage(STAGES.forestTemple),
+                ...connect,
+                { op: "wait", sec: 35 },
+                { op: "waitConnected", timeoutSec: 0 },
+                { op: "quit" },
+            ],
+        }],
+    },
     {
         name: "tcp-transport",
         description: "same-stage over tcp:// (NetService, length-prefixed JSON) instead of WebSocket",

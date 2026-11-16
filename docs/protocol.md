@@ -15,8 +15,11 @@ Every message is one JSON object with a `type` string.
 | `tcp://host:port` | plain TCP | 4-byte little-endian length N (1 to 1048576), then N bytes of UTF-8 JSON |
 
 WebSocket clients may offer the subprotocol `twili-together.5`. The relay pings WebSocket
-connections every 10 s. TCP clients send `{"type":"KEEPALIVE"}` every 5 s, the relay answers it,
-and either side drops a TCP peer that stays silent for 30 s. KEEPALIVE is never relayed.
+connections every 10 s. Joined WebSocket clients also send a private
+`{"type":"KEEPALIVE"}` every 5 s to cover host services that miss a Pong.
+The relay counts it as activity and sends no reply over WebSocket.
+TCP clients send the same message every 5 s and receive a reply. Either
+side drops a TCP peer that stays silent for 30 s. KEEPALIVE is never relayed.
 
 The client polls the connection from the game thread once per tick. After an unrequested drop it
 reconnects on its own (1, 2, 4, 8, 15, then every 30 s) with the same session key, so the relay

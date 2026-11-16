@@ -1737,6 +1737,22 @@ test("the heartbeat drops a connection that stops answering pings", () => withSe
     assert.equal(b.ws.readyState, WebSocket.OPEN, "a client that answers pings stays connected");
 }, { TT_PING_MS: "200" }));
 
+test("WebSocket application keepalive covers missing pongs without relaying traffic", () => withServer(async (mk) => {
+    const a = mk({ autoPong: false });
+    const b = mk();
+    await a.join({ roomId: "hb" });
+    await b.join({ roomId: "hb" });
+    const heartbeat = setInterval(() => a.send({ type: "KEEPALIVE" }), 45);
+    try {
+        await settle(650);
+        assert.equal(a.ws.readyState, WebSocket.OPEN, "text heartbeat keeps the joined socket open");
+        await b.expectNone(p => p.type === "KEEPALIVE", "heartbeats are private to the relay");
+    } finally {
+        clearInterval(heartbeat);
+    }
+    await b.waitType("UPDATE_CLIENT_STATE", (p) => p.clientId === a.id && p.online === false, 3000);
+}, { TT_PING_MS: "200" }));
+
 test("a heartbeat interval too long for a Node timer is capped, not run every millisecond", () => withServer(async (mk) => {
     const a = mk({ autoPong: false });
     await a.join();

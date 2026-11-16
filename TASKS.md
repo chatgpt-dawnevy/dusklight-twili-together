@@ -41,6 +41,7 @@ Cocher un critère seulement après vérification de son périmètre complet.
   achats, bouteilles, échanges, clés, checks randomisés et exploration séparée suivie d'un rattrapage.
 - [ ] Robustesse : exécuter les suites existantes et les régressions avec transferts, retransmissions,
   désordre, 50/100/200 ms, latence variable, pertes, mort de Link et changements de room/layer.
+  Le maintien WebSocket après 35 secondes au repos est vérifié sur Linux.
 - [ ] Réception : finir les campagnes vanilla et randomizer à deux. Tester Linux/Linux, Windows/Windows
   et Windows/Linux, dont une session WAN. Utiliser des sauvegardes isolées et aucun écran utilisateur.
 - [ ] Livraison : publier sur le fork deux fichiers .dusk x86-64 distincts du même commit, la compatibilité
