@@ -323,7 +323,10 @@ scene creates the native B_DRE actor and enables the vulnerable phase.
 A replica that confirms an Argorok armor break or Fyrus knockdown can set
 `phaseProposal` on one snapshot for that boss. The relay forwards it exclusively to the combat authority in that
 arena. The authority applies the native transition and broadcasts its own
-confirmed phase through the normal snapshot path.
+confirmed phase through the normal snapshot path. A replica sends a Deku Toad
+bomb stun once when its native reaction starts, using reliable delivery. The
+authority and the replica finish the current bomb reaction without restarting
+it on confirmation.
 The relay accepts snapshots from the lowest client ID on the same team
 and game in the same stage, room, and layer. Snapshots are transient and never replayed.
 Requires both `syncNPCs` and `syncEnemyCombat`.

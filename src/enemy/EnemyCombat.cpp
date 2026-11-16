@@ -38,6 +38,7 @@ constexpr size_t kBatchSize = 16;
 constexpr size_t kMaxSnapshots = 128;
 constexpr auto kInterval = std::chrono::milliseconds(100);
 constexpr int kFyrusDown = 9;
+constexpr int kToadDown = 5;
 constexpr int kToadBombDamage = 8;
 constexpr int kToadDeath = 9;
 constexpr int kArgorokTailHit = 2;
@@ -68,6 +69,7 @@ struct Snapshot {
 std::unordered_map<fpc_ProcID, Snapshot> s_local;
 std::vector<Snapshot> s_remote;
 std::unordered_set<fpc_ProcID> s_replicas;
+std::unordered_set<fpc_ProcID> s_toadStunAnnounced;
 Location s_location;
 int s_room = -1;
 uint32_t s_authority = 0;
@@ -187,8 +189,9 @@ bool parse(const Json& j, Snapshot& s) {
     return true;
 }
 
-void sendBatch(Session& session, Json& states, bool phaseProposal) {
-    if (states.empty()) return;
+bool sendBatch(Session& session, Json& states, bool phaseProposal,
+               net::Delivery delivery = net::Delivery::Droppable) {
+    if (states.empty()) return false;
     Json packet{{"type", "ENEMY_COMBAT"}, {"v", kVersion}, {"quiet", true},
                 {"stageName", s_location.stage.data()}, {"layerNo", s_location.layer},
                 {"roomNo", s_room}, {"sourceSequence", s_nextSourceSequence++},
@@ -196,14 +199,16 @@ void sendBatch(Session& session, Json& states, bool phaseProposal) {
                 {"states", std::move(states)}};
     if (phaseProposal) packet["phaseProposal"] = true;
     sync::stampPacket(packet, false);
-    session.send(packet, net::Delivery::Droppable);
+    const bool sent = session.send(packet, delivery);
     states = Json::array();
+    return sent;
 }
 }  // namespace
 
 void reset() {
     s_local.clear();
     s_remote.clear();
+    s_toadStunAnnounced.clear();
     s_authority = 0;
     s_zoneEpoch = 0;
     s_lastAcceptedSequence = 0;
@@ -216,6 +221,7 @@ void reset() {
 void onActorDeleted(const fopAc_ac_c* actor) {
     s_local.erase(fopAcM_GetID(actor));
     s_replicas.erase(fopAcM_GetID(actor));
+    s_toadStunAnnounced.erase(fopAcM_GetID(actor));
 }
 
 void tick() {
@@ -228,6 +234,7 @@ void tick() {
         s_zoneEpoch = session.enemyZoneEpoch();
         s_local.clear();
         s_remote.clear();
+        s_toadStunAnnounced.clear();
         s_lastSend = {};
         s_authority = owner;
         s_room = room;
@@ -303,14 +310,15 @@ bool handlePacket(const std::string& type, const Json& packet) {
     }
     for (const auto& item : *states) {
         Snapshot state;
-        if (!parse(item, state) || (phaseProposal && state.armorBreaks == 0 && state.knockdowns == 0)) continue;
+        if (!parse(item, state) ||
+            (phaseProposal && state.armorBreaks == 0 && state.knockdowns == 0 && !state.bombStun)) continue;
         state.at = Clock::now();
         const auto existing = std::find_if(s_remote.begin(), s_remote.end(),
             [&](const Snapshot& s) { return enemy_sync::sameKey(s.key, state.key); });
         if (existing != s_remote.end()) {
             if (state.armorBreaks < existing->armorBreaks || state.knockdowns < existing->knockdowns ||
                 (!state.bombStun && existing->bombStun && !existing->applied)) continue;
-            state.applied = state.bombStun && existing->applied;
+            state.applied = state.bombStun && existing->applied && !phaseProposal;
             *existing = state;
         } else if (s_remote.size() < kMaxSnapshots) {
             s_remote.push_back(state);
@@ -387,26 +395,37 @@ void updateDekuToad(daE_DT_c& actor) {
     {
         return;
     }
-    if (s_authority == Session::instance().selfClientId()) {
+    const bool stunned = actor.mAction == kToadBombDamage;
+    if (!stunned && actor.mAction != kToadDown) s_toadStunAnnounced.erase(id);
+
+    auto& session = Session::instance();
+    if (s_authority == session.selfClientId()) {
         Snapshot snapshot;
         snapshot.key = *key;
-        snapshot.bombStun = actor.mAction == kToadBombDamage;
+        snapshot.bombStun = stunned;
         snapshot.at = Clock::now();
         s_local[id] = snapshot;
-        return;
+        if (stunned) s_toadStunAnnounced.insert(id);
+    } else if (stunned && !s_toadStunAnnounced.contains(id) &&
+        enemy_sync::detail::canSendHere(s_location.stage.data(), s_location.layer)) {
+        Json state = enemy_sync::detail::keyJson(*key);
+        state["bombStun"] = true;
+        Json states = Json::array({std::move(state)});
+        if (sendBatch(session, states, true, net::Delivery::Reliable)) {
+            s_toadStunAnnounced.insert(id);
+        }
     }
     if (actor.mLinkPressed || dComIfGp_event_runCheck()) return;
     const auto snapshot = std::find_if(s_remote.begin(), s_remote.end(),
         [&](const Snapshot& state) { return enemy_sync::sameKey(state.key, *key); });
     if (snapshot == s_remote.end() || !snapshot->bombStun || snapshot->applied ||
-        Clock::now() - snapshot->at >= kToadStunTimeout)
-    {
+        Clock::now() - snapshot->at >= kToadStunTimeout) {
         return;
     }
     snapshot->applied = true;
-    if (actor.mAction != kToadBombDamage) {
-        actor.setActionMode(kToadBombDamage, 0);
-    }
+    const bool sameReaction = stunned || (actor.mAction == kToadDown && s_toadStunAnnounced.contains(id));
+    s_toadStunAnnounced.insert(id);
+    if (!sameReaction) actor.setActionMode(kToadBombDamage, 0);
 }
 
 void updateFyrus(e_fm_class& actor) {

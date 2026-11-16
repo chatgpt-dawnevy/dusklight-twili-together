@@ -29,6 +29,7 @@ const DAMAGE_MIN_INTERVAL_MS = envNumber("TT_DAMAGE_INTERVAL_MS", 200);
 const MAX_PVP_DAMAGE = 4; // quarter hearts per hit
 const ARGOROK_PROFILE = 0xf7;
 const FYRUS_PROFILE = 0x1d7;
+const DEKU_TOAD_PROFILE = 0x200;
 const PVP_KIND_COUNT = 12;
 const PVP_KNOCKBACK_COUNT = 2; // "spl": 0 light, 1 knockdown
 const DAMAGE_RESULTS = new Set(["applied", "blocked", "dropped"]);
@@ -364,6 +365,9 @@ function isBossPhaseProposal(state, stageName, roomNo) {
     if (state.procName === FYRUS_PROFILE) {
         return stageName === "D_MN04A" && Number.isInteger(state.knockdowns) &&
             state.knockdowns >= 1 && state.knockdowns <= 127;
+    }
+    if (state.procName === DEKU_TOAD_PROFILE) {
+        return stageName === "D_MN01B" && state.bombStun === true;
     }
     return false;
 }

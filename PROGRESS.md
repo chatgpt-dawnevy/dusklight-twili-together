@@ -214,3 +214,17 @@
   Preuves dans `tests-coop/boss-results/20261116-204354/`.
 - Prochaine action : transmettre un étourdissement du crapaud Mojo une
   seule fois par entrée native, quel que soit le joueur qui le déclenche.
+- PR #18 fusionnée par squash (`c762c11`).
+- La récupération d’un objet et d’interrupteurs après une période
+  hors ligne passe, ainsi que la récupération d’une clé sans rejouer
+  les clés déjà reçues. Preuves sous
+  `tests-coop/results/20261116-204619/`.
+- Branche `feature/toad-peer-stun`. Le coéquipier peut annoncer le
+  début de la réaction à une bombe. Le relais la transmet uniquement
+  à l’autorité. Les confirmations reçues durant cette réaction ne
+  relancent pas l’animation. Compilation Linux et 129 tests du relais
+  réussis. Les deux scénarios à deux clients vérifient le début et
+  la fin de l’étourdissement, puis l’absence de reprise. Preuves
+  dans `tests-coop/boss-results/20261116-205034/`.
+- Prochaine action : vérifier la défaite du crapaud Mojo, son coffre
+  de grappin et la sortie de l’arène dans les deux directions.
