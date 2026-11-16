@@ -660,6 +660,46 @@ std::optional<bool> bossSteps(const std::string& op, StepContext& ctx) {
         return false;
     }
 
+    if (op == "hitBlizzetaSecondForm" || op == "expectBlizzetaHit" || op == "expectBlizzetaIciclesBroken") {
+        auto* actor = liveBoss();
+        const int hits = step.value("hits", 0);
+        if (actor != nullptr && fopAcM_GetName(actor) == fpcNm_B_YO_e) {
+            auto& boss = *static_cast<daB_YO_c*>(actor);
+            if (boss.mModelNo == 7) {
+                if (op == "expectBlizzetaHit" && boss.mLastPhaseDamage == hits &&
+                    boss.mAction == daB_YO_c::ACT_DAMAGE) {
+                    return true;
+                }
+                if (op == "expectBlizzetaIciclesBroken" && boss.mLastPhaseDamage == hits &&
+                    boss.mIceBreak == 0x3ff) {
+                    return true;
+                }
+                if (op == "hitBlizzetaSecondForm" && hits >= 1 && hits <= 2 &&
+                    boss.mLastPhaseDamage == hits - 1 && boss.mIceBreak != 0x3ff &&
+                    boss.mAction == daB_YO_c::ACT_ATTACK_BODY && boss.mMode == 4 &&
+                    boss.mIFrameIronTimer == 0 && !boss.mTgIronSph[0].ChkTgShield() &&
+                    !dComIfGp_event_runCheck()) {
+                    ++boss.mLastPhaseDamage;
+                    boss.mIFrameIronTimer = 20;
+                    dComIfGs_onOneZoneSwitch(8, fopAcM_GetRoomNo(actor));
+                    boss.setIcicleOperate(9);
+                    boss.setActionMode(daB_YO_c::ACT_DAMAGE, 0);
+                    return true;
+                }
+            }
+            if (ctx.seconds > ctx.timeout(95.0)) {
+                ctx.fail(fmt::format("{}: wanting hit {}, current {}, armor {}, action {}, mode {}, y {}, ice 0x{:03x}",
+                    op, hits, boss.mLastPhaseDamage, boss.mModelNo, boss.mAction, boss.mMode,
+                    boss.current.pos.y, boss.mIceBreak));
+                return false;
+            }
+        }
+        if (ctx.seconds > ctx.timeout(95.0)) {
+            ctx.fail(fmt::format("{}: Blizzeta did not reach hit {}", op, hits));
+        }
+        return false;
+    }
+
     if (op == "prepareBlizzetaEnding") {
         auto* actor = liveBoss();
         if (actor != nullptr && fopAcM_GetName(actor) == fpcNm_B_YO_e) {

@@ -39,7 +39,9 @@ Cocher un critère seulement après vérification de son périmètre complet.
   Blizzeta est testée avec les deux joueurs en seconde forme. Ses six
   ruptures d’armure et l’arrivée en seconde forme sont vérifiées
   lorsque les joueurs alternent les coups dans les deux ordres.
-  Les combats complets et les coups de la seconde forme restent à vérifier.
+  Les deux coups non létaux de la seconde forme et la destruction des
+  dix glaçons passent également dans les deux directions. Les attaques,
+  les positions et le combat complet restent à vérifier.
 - [ ] Objets et progression : vérifier les acquisitions et dépenses dans les deux modes de stock, les
   achats, bouteilles, échanges, clés, checks randomisés et exploration séparée suivie d'un rattrapage.
   Deux clients Linux ont réconcilié objets, événement et interrupteurs
