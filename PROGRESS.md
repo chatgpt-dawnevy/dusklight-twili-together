@@ -56,7 +56,7 @@
   ont réussi, ainsi que les 127 tests du relais. Le scénario avec deux clients
   Linux a vérifié qu'une défaite injectée dans le gestionnaire avec une ancienne
   génération laisse le Bokoblin vivant, puis qu'avec la génération courante la
-  même défaite s'applique. Régression réseau Bokoblin encore en cours.
+  même défaite s'applique. Régression réseau Bokoblin réussie sur les deux clients.
   Preuves : `tests-coop/enemy-results/20261116-145714/`.
   Cette étape ne traite pas un événement ancien reçu tardivement par le relais.
 - Prochaine action : associer le producteur de l'événement à une génération du
