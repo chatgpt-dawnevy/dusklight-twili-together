@@ -53,5 +53,12 @@
 - Branche `feature/enemy-zone-delivery` : le relais marque les paquets par
   génération annoncée du destinataire. Les files locales expirent au déchargement
   de la table de sauvegarde. Les tests ciblés du relais et la compilation Linux
-  ont réussi. La réception en jeu et la régression Bokoblin sont en cours.
+  ont réussi, ainsi que les 127 tests du relais. Le scénario avec deux clients
+  Linux a vérifié qu'une défaite injectée dans le gestionnaire avec une ancienne
+  génération laisse le Bokoblin vivant, puis qu'avec la génération courante la
+  même défaite s'applique. Régression réseau Bokoblin encore en cours.
+  Preuves : `tests-coop/enemy-results/20261116-145714/`.
   Cette étape ne traite pas un événement ancien reçu tardivement par le relais.
+- Prochaine action : associer le producteur de l'événement à une génération du
+  combat attribuée par le relais, puis tester un coup ancien reçu après le
+  rechargement. Vérifier la reprise des PV avant d'étendre aux boss.
