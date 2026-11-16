@@ -404,6 +404,36 @@ test("ENEMY_DAMAGE reaches only teammates in the sender's stage and layer, stamp
     }
 }));
 
+test("enemy damage discards retransmissions and keeps different shooters independent", () => withServer(async (mk) => {
+    const a = mk(), b = mk();
+    await a.join({ teamId: "red" });
+    await b.join({ teamId: "red" });
+    a.enterStage("F_SP108", 0, { enemyZoneEpoch: 1 });
+    b.enterStage("F_SP108", 0, { enemyZoneEpoch: 1 });
+    await settle();
+
+    const hits = [{ roomNo: 0, procName: 485, params: 0xffffff00, setId: 0xffff, dup: 0,
+        home: { x: 1, y: 2, z: 3 }, dmg: 7, pct: 100, hpAfter: 33 }];
+    const packet = { type: "ENEMY_DAMAGE", quiet: true, v: 1, stageName: "F_SP108",
+        layerNo: 0, hits, sourceEnemyZoneEpoch: 1 };
+    a.send({ ...packet, sourceSequence: 1 });
+    b.send({ ...packet, sourceSequence: 1 });
+    assert.equal((await b.waitType("ENEMY_DAMAGE")).clientId, a.id);
+    assert.equal((await a.waitType("ENEMY_DAMAGE")).clientId, b.id);
+
+    a.send({ ...packet, sourceSequence: 1 });
+    a.send({ ...packet, sourceSequence: 0 });
+    a.send({ ...packet, sourceSequence: 2.5 });
+    a.send(packet);
+    a.send({ ...packet, sourceSequence: 100, hits: [] });
+    a.send({ ...packet, sourceSequence: 101, stageName: "F_SP103" });
+    a.send({ ...packet, sourceSequence: 102, sourceEnemyZoneEpoch: 2 });
+    await b.expectNone((p) => p.type === "ENEMY_DAMAGE", "only unique, valid damage is forwarded");
+
+    a.send({ ...packet, sourceSequence: 3 });
+    assert.equal((await b.waitType("ENEMY_DAMAGE")).sourceSequence, 3);
+}));
+
 test("enemy delivery uses the receiver's latest advertised stage incarnation", () => withServer(async (mk) => {
     const a = mk(), b = mk(), legacy = mk();
     await a.join({ teamId: "red" });

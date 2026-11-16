@@ -12,7 +12,9 @@ Cocher un critère seulement après vérification de son périmètre complet.
 - [ ] Dégâts et vie : faire valider les coups par l'autorité, appliquer une seule fois les coups simultanés,
   réconcilier les PV, refuser les coups après une mort et préserver les réactions natives.
   La reprise non létale des PV du Bokoblin après reconnexion a un scénario
-  validé sur deux clients Linux. Les dégâts simultanés restent à traiter.
+  validé sur deux clients Linux. Deux coups proches dans le temps ont
+  convergé à 22 PV sous latence variable, et le relais rejette les
+  lots retransmis. Il reste à faire valider les coups par l’autorité.
 - [ ] Ennemis classiques : inventorier placements, variantes et spawners. Synchroniser apparition,
   position et orientation avec interpolation, cibles, attaques, collision, réactions et défaites.
   Le relevé des profils placés est documenté dans PROGRESS.md. Le passage

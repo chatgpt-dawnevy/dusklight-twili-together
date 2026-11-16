@@ -354,6 +354,11 @@ function broadcastPresence(room, sender, packet) {
     }
 }
 
+function acceptSourceSequence(packet, previous) {
+    if (!("sourceSequence" in packet)) return previous === 0;
+    return Number.isSafeInteger(packet.sourceSequence) && packet.sourceSequence > previous;
+}
+
 function broadcastTeamPresence(room, sender, packet) {
     if (!sender.online || !sender.isSaveLoaded) return;
     const enemyEvent = packet.type === "ENEMY_DAMAGE" || packet.type === "ENEMY_DEFEATED";
@@ -868,6 +873,7 @@ function handleHandshake(conn, packet) {
         isSaveLoaded: false,
         caughtUp: false,
         lastCombatSourceSequence: 0,
+        lastEnemyDamageSourceSequence: 0,
         enemyZoneEpoch: 0,
         stageName: "",
         layerNo: 0,
@@ -1228,13 +1234,8 @@ function handlePacket(client, packet) {
             peer.stageName === client.stageName && peer.layerNo === client.layerNo &&
             peer.roomNo === client.roomNo && peer.protocolVersion === client.protocolVersion && syncOk(room, peer));
         if (peers.some((peer) => peer.clientId < client.clientId)) return;
-        if ("sourceSequence" in packet) {
-            if (!Number.isSafeInteger(packet.sourceSequence) ||
-                packet.sourceSequence <= client.lastCombatSourceSequence) return;
-            client.lastCombatSourceSequence = packet.sourceSequence;
-        } else if (client.lastCombatSourceSequence !== 0) {
-            return;
-        }
+        if (!acceptSourceSequence(packet, client.lastCombatSourceSequence)) return;
+        if ("sourceSequence" in packet) client.lastCombatSourceSequence = packet.sourceSequence;
         const combat = { type: packet.type, v: 1, clientId: client.clientId, teamId: client.teamId,
             senderSessionKey: client.sessionKey, protocolVersion: client.protocolVersion, addToQueue: false,
             sequence: nextCombatSequence++, stageName: client.stageName, layerNo: client.layerNo, roomNo: client.roomNo, states: packet.states };
@@ -1245,6 +1246,17 @@ function handlePacket(client, packet) {
             }
         }
         return;
+    }
+
+    if (packet.type === "ENEMY_DAMAGE") {
+        if (!acceptSourceSequence(packet, client.lastEnemyDamageSourceSequence)) return;
+        if ("sourceSequence" in packet) {
+            if (packet.v !== 1 || !Array.isArray(packet.hits) ||
+                packet.hits.length < 1 || packet.hits.length > 16 ||
+                !client.online || !client.isSaveLoaded ||
+                packet.stageName !== client.stageName || packet.layerNo !== client.layerNo) return;
+            client.lastEnemyDamageSourceSequence = packet.sourceSequence;
+        }
     }
 
     if (TEAM_PRESENCE_PACKET_TYPES.has(packet.type)) {
