@@ -8,6 +8,7 @@
 
 #include "m_Do/m_Do_ext.h"
 #include "d/d_kankyo.h"
+#include "d/actor/d_a_b_dr.h"
 #include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_oc.h"
@@ -39,6 +40,9 @@ constexpr auto kInterval = std::chrono::milliseconds(100);
 constexpr int kFyrusDown = 9;
 constexpr int kToadBombDamage = 8;
 constexpr int kToadDeath = 9;
+constexpr int kArgorokTailHit = 2;
+constexpr int kArgorokDamageDemo = 11;
+constexpr auto kArgorokArmorTimeout = std::chrono::seconds(45);
 constexpr auto kTimeout = std::chrono::milliseconds(750);
 constexpr auto kToadStunTimeout = std::chrono::seconds(8);
 
@@ -55,6 +59,7 @@ struct Snapshot {
     bool attacking = false;
     Clock::time_point at{};
     int knockdowns = 0;
+    int armorBreaks = 0;
     bool bombStun = false;
     bool applied = false;
     std::optional<enemy_damage::HealthCheckpoint> health{};
@@ -137,6 +142,12 @@ bool parse(const Json& j, Snapshot& s) {
     using enemy_sync::detail::intField;
     int64_t yaw, action, phase, animation, playMode;
     if (!enemy_sync::detail::parseKey(j, s.key) || s.key.roomNo != s_room) return false;
+    if (s.key.procName == fpcNm_B_DR_e) {
+        int64_t armorBreaks;
+        if (!intField(j, "armorBreaks", 1, 2, armorBreaks)) return false;
+        s.armorBreaks = static_cast<int>(armorBreaks);
+        return true;
+    }
     if (s.key.procName == fpcNm_E_FM_e) {
         int64_t knockdowns;
         if (!intField(j, "knockdowns", 1, 127, knockdowns)) return false;
@@ -222,7 +233,10 @@ void tick() {
         s_location = location;
     }
     const auto now = Clock::now();
-    std::erase_if(s_remote, [&](const Snapshot& s) { return now - s.at >= (s.bombStun ? kToadStunTimeout : kTimeout); });
+    std::erase_if(s_remote, [&](const Snapshot& s) {
+        if (s.armorBreaks != 0) return now - s.at >= kArgorokArmorTimeout;
+        return now - s.at >= (s.bombStun ? kToadStunTimeout : kTimeout);
+    });
     if (owner == 0 || owner != session.selfClientId() || now - s_lastSend < kInterval ||
         !enemy_sync::detail::canSendHere(location.stage.data(), location.layer))
     {
@@ -233,7 +247,9 @@ void tick() {
     for (const auto& [id, state] : s_local) {
         if (now - state.at >= kTimeout || enemy_sync::isDying(id)) continue;
         Json item = enemy_sync::detail::keyJson(state.key);
-        if (state.key.procName == fpcNm_E_FM_e) {
+        if (state.key.procName == fpcNm_B_DR_e) {
+            item["armorBreaks"] = state.armorBreaks;
+        } else if (state.key.procName == fpcNm_E_FM_e) {
             item["knockdowns"] = state.knockdowns;
         } else if (state.key.procName == fpcNm_E_DT_e) {
             item["bombStun"] = state.bombStun;
@@ -307,6 +323,49 @@ void capture(daE_OC_c& actor) {
             actor.mActionMode, actor.mOcState, animation, actor.mpMorf->getPlayMode(),
             actor.mpMorf->getFrame(), actor.mpMorf->getPlaySpeed(), attack, Clock::now()};
         return;
+    }
+}
+
+void updateArgorok(daB_DR_c& actor) {
+    const auto id = fopAcM_GetID(&actor);
+    const auto* key = enemy_sync::trackedKey(id);
+    if (key == nullptr || s_zoneEpoch != Session::instance().enemyZoneEpoch() || s_authority == 0 ||
+        !s_location.matches(enemy_sync::detail::currentLocation()) || key->roomNo != s_room ||
+        dStage_roomControl_c::getStayNo() != s_room || dComIfGp_isEnableNextStage() ||
+        actor.arg0 >= 0xFE || actor.health <= 0 || enemy_sync::isDying(id))
+    {
+        return;
+    }
+    if (s_authority == Session::instance().selfClientId()) {
+        const bool secondCrash = actor.mBreakPartsNo == 2 &&
+            actor.mActionMode == kArgorokTailHit && actor.mMoveMode >= 13;
+        const int armorBreaks = secondCrash ? 2 : actor.field_0x7d1;
+        if (armorBreaks == 1 || armorBreaks == 2) {
+            Snapshot snapshot;
+            snapshot.key = *key;
+            snapshot.armorBreaks = armorBreaks;
+            snapshot.at = Clock::now();
+            s_local[id] = snapshot;
+        }
+        return;
+    }
+    if (dComIfGp_event_runCheck() || dComIfGp_checkPlayerStatus1(0, 0x10000) ||
+        actor.mActionMode >= kArgorokDamageDemo || actor.mActionMode == kArgorokTailHit) {
+        return;
+    }
+    const auto snapshot = std::find_if(s_remote.begin(), s_remote.end(),
+        [&](const Snapshot& state) { return enemy_sync::sameKey(state.key, *key); });
+    if (snapshot == s_remote.end() || snapshot->armorBreaks <= actor.field_0x7d1 ||
+        Clock::now() - snapshot->at >= kArgorokArmorTimeout) {
+        return;
+    }
+    if (actor.field_0x7d1 == 0 && actor.mBreakPartsNo == 0) {
+        actor.setActionMode(kArgorokDamageDemo, 10);
+    } else if (actor.field_0x7d1 == 1 && actor.mBreakPartsNo == 1) {
+        // Entry used after the second armored fall. The native cutscene spawns B_DRE.
+        actor.mBreakPartsNo = 2;
+        actor.mTailCc.OffTgSetBit();
+        actor.setActionMode(kArgorokTailHit, 12);
     }
 }
 

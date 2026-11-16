@@ -163,3 +163,20 @@
 - Prochaine action : synchroniser les deux ruptures d’armure d’Argorok
   avec les routines natives et vérifier que le coéquipier peut atteindre
   la phase vulnérable sans répéter la même manœuvre.
+- PR #15 fusionnée par squash (`051e8e9`).
+- Branche `feature/argorok-armor-phases`. Le premier essai a validé la
+  première rupture sur les deux clients. B a créé son acteur B_DRE
+  pour la seconde rupture, puis le test a expiré pendant la scène.
+  La relance annonce la seconde rupture dès son entrée native
+  confirmée, pour éviter que B attende la fin de la scène chez A.
+  Le scénario actuel fait démarrer les ruptures chez l’autorité.
+  Il reste à vérifier leur déclenchement par le coéquipier.
+- Les deux ruptures d’armure passent sur deux clients Linux isolés
+  avec l’autorité comme initiateur. Les deux scènes B_DRE se
+  déroulent en parallèle. B atteint la phase vulnérable environ
+  2,4 secondes après A. Compilation Linux, 128 tests du relais et
+  vérification ciblée du routage de l’armure réussies.
+  Preuves dans `tests-coop/boss-results/20261116-203353/`.
+- Prochaine action : permettre au coéquipier qui ne détient pas
+  l’autorité de lui transmettre sa rupture d’armure et valider ce
+  sens avec les deux instances Linux isolées.

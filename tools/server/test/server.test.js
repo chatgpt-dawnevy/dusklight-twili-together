@@ -484,10 +484,14 @@ test("ENEMY_COMBAT scopes snapshots to the elected teammate in the same room", (
     noSave.enterStage("F_SP108", 0, { isSaveLoaded: false });
     await settle();
 
-    const states = [{ procName: 485, roomNo: 0, params: 0xffffff00, setId: 0xffff, dup: 0,
-        home: { x: 1, y: 2, z: 3 }, x: 8, y: 2, z: 5, yaw: 32767,
-        action: 4, phase: 2, animation: 6, playMode: 0, frame: 16, rate: 1, attacking: true,
-        health: 72, healthPercent: 200 }];
+    const states = [
+        { procName: 485, roomNo: 0, params: 0xffffff00, setId: 0xffff, dup: 0,
+            home: { x: 1, y: 2, z: 3 }, x: 8, y: 2, z: 5, yaw: 32767,
+            action: 4, phase: 2, animation: 6, playMode: 0, frame: 16, rate: 1, attacking: true,
+            health: 72, healthPercent: 200 },
+        { procName: 247, roomNo: 0, params: 0x95948a00, setId: 0xffff, dup: 0,
+            home: { x: 0, y: 0, z: 0 }, armorBreaks: 2 },
+    ];
     const packet = { type: "ENEMY_COMBAT", v: 1, quiet: true, stageName: "F_SP108", layerNo: 0, roomNo: 0, states };
     const isCombat = (p) => p.type === "ENEMY_COMBAT";
     a.send(packet);

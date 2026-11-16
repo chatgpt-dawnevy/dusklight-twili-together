@@ -28,7 +28,9 @@ Cocher un critère seulement après vérification de son périmètre complet.
 - [ ] Boss et mini-boss : inventorier les profils et acteurs secondaires. Tester chaque phase, projectile,
   vulnérabilité, scène et récompense. Vérifier une seule récompense et une sortie utilisable à deux.
   Argorok passe la fin, le miroir, le cœur et la sortie dans les
-  deux directions du scénario Linux. Le combat complet reste à vérifier.
+  deux directions du scénario Linux. Les deux ruptures d’armure
+  déclenchées par l’autorité mènent les deux clients à la phase vulnérable.
+  Le sens inverse et le combat complet restent à vérifier.
 - [ ] Objets et progression : vérifier les acquisitions et dépenses dans les deux modes de stock, les
   achats, bouteilles, échanges, clés, checks randomisés et exploration séparée suivie d'un rattrapage.
 - [ ] Robustesse : exécuter les suites existantes et les régressions avec transferts, retransmissions,
