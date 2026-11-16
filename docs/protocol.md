@@ -333,3 +333,11 @@ clients accept packets without a sequence until the first numbered snapshot.
 
 This number orders delivered snapshots. It is independent of spawn generation,
 sender input deduplication and authority leases.
+
+
+Updated senders also include a positive integer `sourceSequence` per connection.
+The relay checks it only after validating scope and election. It discards stale
+or repeated sends, permits gaps, and does not forward the source number.
+Older clients remain compatible until they send their first numbered snapshot.
+This applies to combat snapshots only; damage and death still use their
+existing event paths.
