@@ -13,10 +13,17 @@
 - Les tests Linux utilisent le SDK épinglé à `a6dcc2e726d9c94b033cd08634dfaebf62ba4468`,
   le moteur de test local et Xvfb. Les scénarios automatisés ne remplacent pas les sessions
   manuelles Windows/Linux ni la campagne complète.
-- Travail en cours : ajouter la preuve de mort native des Leevers et Keese d'ombre.
-  Ensuite traiter les incarnations des spawners et le rattrapage des dégâts autoritatifs.
 - Diagnostic Leever : les enfants natifs d'un nid E_rb n'ont pas de placement direct
   et n'utilisent pas la liste E_Make. Ils étaient exclus du suivi faute de clé.
   Ajout d'une clé fondée sur le nid et l'ordre de ses demandes de création. Les numéros
   continuent au fil des vagues. Le rechargement du nid exige encore une génération de zone.
-  La compilation et le scénario des morts natives sont en cours de validation.
+  Le scénario `enemy-leever-shadow-keese-native` passe chez A et B (commit
+  `36b850f`, PR #6). A déclenche la réaction létale du Leever et B celle du Keese.
+  Les deux suppressions natives, les interrupteurs 26 et 27 et les compteurs de
+  réseau sont vérifiés. Le premier essai exigeait à tort un PV courant de 1 chez
+  le Leever ; le jeu met ce champ à zéro même quand il est vivant. Le test corrigé
+  vérifie sa capacité native d'un PV. Preuves dans
+  `tests-coop/enemy-results/20261116-143849/enemy-leever-shadow-keese-native/`.
+- Prochaine action : vérifier deux enfants d'un même nid et une seconde vague,
+  puis ajouter l'incarnation de zone aux clés réseau pour refuser les morts tardives
+  après un rechargement. Tester ensuite l'attribution d'un coup simultané à l'autorité.
