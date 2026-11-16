@@ -146,6 +146,7 @@ if (TWILI_ENABLE_AUTOTEST)
         src/autotest/StepsColor.cpp
         src/autotest/StepsCutscene.cpp
         src/autotest/StepsEnemy.cpp
+        src/autotest/EnemyFixtures.cpp
         src/autotest/StepsFidelity.cpp
         src/autotest/StepsGetItem.cpp
         src/autotest/StepsHorse.cpp

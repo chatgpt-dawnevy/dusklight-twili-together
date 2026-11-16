@@ -140,6 +140,13 @@ std::unordered_map<fpc_ProcID, Job> s_jobs;
 std::unordered_map<fpc_ProcID, Extra> s_extras;
 std::unordered_map<fpc_ProcID, Brood> s_broods;
 std::unordered_map<fpc_ProcID, std::vector<BroodSlot>> s_broodSlots;
+// A Leever nest spawns a fixed sequence of children directly, without an
+// E_Make actor list. Number the requests, including subsequent broods.
+struct LeeverBrood {
+    uint16_t next = 0;
+    std::unordered_map<fpc_ProcID, uint16_t> children;
+};
+std::unordered_map<fpc_ProcID, LeeverBrood> s_leeverBroods;
 
 const DupSpec* findSpec(s16 procName, u32 params, Place& place) {
     for (const DupSpec& s : kDupSpecs) {
@@ -513,6 +520,11 @@ void onActorDeleted(fopAc_ac_c* ac) {
     s_pending.erase(id);
     s_broods.erase(id);
     s_broodSlots.erase(id);
+    s_leeverBroods.erase(id);
+    if (fopAcM_GetName(ac) == fpcNm_E_RB_e) {
+        const auto nest = s_leeverBroods.find(ac->parentActorID);
+        if (nest != s_leeverBroods.end()) nest->second.children.erase(id);
+    }
 }
 
 bool extraKey(fpc_ProcID id, enemy_sync::SpawnKey& out) {
@@ -551,12 +563,32 @@ int extrasInRoom(int roomNo) {
     return roomExtras(static_cast<int8_t>(roomNo));
 }
 
+void onLeeverChildRequested(fpc_ProcID id, const fopAcM_prm_class& prm) {
+    if (id == fpcM_ERROR_PROCESS_ID_e || prm.parent_id == fpcM_ERROR_PROCESS_ID_e ||
+        (static_cast<uint32_t>(prm.base.parameters) & 0xff) != 1) return;
+    auto& nest = s_leeverBroods[prm.parent_id];
+    if (nest.next >= 0x3F00) return;
+    nest.children.emplace(id, nest.next++);
+}
+
 bool broodKey(fopAc_ac_c* ac, enemy_sync::SpawnKey& out) {
     const fopAcM_prm_class* prm = fopAcM_GetAppend(ac);
     if (prm == nullptr || prm->parent_id == fpcM_ERROR_PROCESS_ID_e) {
         return false;
     }
     fopAc_ac_c* parent = fopAcM_SearchByID(prm->parent_id);
+    if (parent != nullptr && fopAcM_GetName(ac) == fpcNm_E_RB_e &&
+        fopAcM_GetName(parent) == fpcNm_E_RB_e) {
+        const auto nest = s_leeverBroods.find(prm->parent_id);
+        if (nest == s_leeverBroods.end()) return false;
+        const auto child = nest->second.children.find(fopAcM_GetID(ac));
+        if (child == nest->second.children.end()) return false;
+        const cXyz& home = parent->home.pos;
+        out = {fpcNm_E_RB_e, fopAcM_GetHomeRoomNo(parent),
+            static_cast<uint32_t>(prm->base.parameters),
+            static_cast<uint16_t>(kBroodSetId + child->second), {home.x, home.y, home.z}};
+        return true;
+    }
     if (parent == nullptr || fopAcM_GetName(parent) != fpcNm_Obj_E_CREATE_e) {
         return false;
     }
@@ -673,6 +705,7 @@ void shutdown() {
     s_extras.clear();
     s_broods.clear();
     s_broodSlots.clear();
+    s_leeverBroods.clear();
 }
 
 }  // namespace twili::enemy_count

@@ -341,3 +341,13 @@ or repeated sends, permits gaps, and does not forward the source number.
 Older clients remain compatible until they send their first numbered snapshot.
 This applies to combat snapshots only; damage and death still use their
 existing event paths.
+
+### Native Leever nests
+
+Children created directly by an `E_rb` nest do not have an `E_Make` list.
+Use the nest's home/room and a synthetic set ID starting at 0xC000. The
+ordinal is assigned at request time in the nest's own fixed creation loop
+and advances across broods. The local parent process ID is never sent.
+The relay still scopes the key to stage and layer. If the entire nest
+reloads, its ordinal restarts. An authoritative zone incarnation is still
+needed to disambiguate delayed events across a complete room reload.
