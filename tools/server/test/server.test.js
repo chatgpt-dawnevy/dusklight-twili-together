@@ -589,6 +589,20 @@ test("boss phase proposals reach only the current combat authority", () => withS
     const down = await authority.waitType("ENEMY_COMBAT");
     assert.equal(down.phaseProposal, true);
     assert.deepEqual(down.states, [knockdown]);
+
+    for (const peer of peers) peer.enterStage("D_MN01B", 0, { roomNo: 51, enemyZoneEpoch: 4 });
+    await settle();
+    const stun = { ...armor, procName: 0x200, roomNo: 51, bombStun: true };
+    delete stun.armorBreaks;
+    const toad = { ...proposal, stageName: "D_MN01B", roomNo: 51, states: [stun],
+        sourceEnemyZoneEpoch: 4, sourceSequence: 3 };
+    proposer.send({ ...toad, states: [{ ...stun, bombStun: false }] });
+    await authority.expectNone(combat, "an ended bomb reaction is not a phase proposal");
+    proposer.send(toad);
+    proposer.send(toad);
+    assert.deepEqual((await authority.waitType("ENEMY_COMBAT")).states, [stun]);
+    await authority.expectNone(combat, "a retransmitted bomb reaction");
+
 }));
 
 test("queued team packets are numbered by the server, live and in the replay", () => withServer(async (mk) => {

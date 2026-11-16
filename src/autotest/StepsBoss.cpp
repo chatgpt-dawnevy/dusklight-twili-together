@@ -528,7 +528,8 @@ std::optional<bool> bossSteps(const std::string& op, StepContext& ctx) {
         return false;
     }
 
-    if (op == "prepareToadCombat" || op == "startToadBombStun" || op == "expectToadBombStun") {
+    if (op == "prepareToadCombat" || op == "startToadBombStun" || op == "expectToadBombStun" ||
+        op == "expectToadRecovered") {
         auto* actor = liveBoss();
         if (actor == nullptr || fopAcM_GetName(actor) != fpcNm_E_DT_e) {
             ctx.fail("Deku Toad phase: no live Deku Toad");
@@ -545,6 +546,11 @@ std::optional<bool> bossSteps(const std::string& op, StepContext& ctx) {
                 toad.setActionMode(0, 0);
             }
             return true;
+        }
+        if (op == "expectToadRecovered") {
+            if (toad.mAction != bombDamage) return true;
+            if (ctx.seconds > ctx.timeout(35.0)) ctx.fail("Deku Toad stayed in the bomb reaction");
+            return false;
         }
         if (op == "startToadBombStun") {
             toad.setActionMode(bombDamage, 0);
