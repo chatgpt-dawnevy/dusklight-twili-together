@@ -18,6 +18,7 @@
 #include "d/actor/d_a_e_ai.h"
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_fm.h"
+#include "d/actor/d_a_e_gb.h"
 #include "d/actor/d_a_e_gob.h"
 #include "d/actor/d_a_e_hz.h"
 #include "d/actor/d_a_e_hm.h"
@@ -405,6 +406,24 @@ void darkhammerKill(fopAc_ac_c* ac) {
     Z2GetAudioMgr()->subBgmStop();
 }
 
+// Giant Baba's head and flower actions are local to d_a_e_gb.cpp.
+constexpr int kGiantBabaHeadEnd = 5;
+constexpr int kGiantBabaHeadStart = 10;
+constexpr int kGiantBabaEatBomb = 2;
+constexpr int kGiantBabaFlowerChance = 3;
+constexpr int kGiantBabaFlowerEnd = 10;
+
+bool giantBabaIsDead(const fopAc_ac_c* ac) {
+    return reinterpret_cast<const e_gb_class*>(ac)->flowerAction == kGiantBabaFlowerEnd;
+}
+
+void giantBabaKill(fopAc_ac_c* ac) {
+    auto& baba = *reinterpret_cast<e_gb_class*>(ac);
+    // Let the native flower animation burst, set the switch and release the key.
+    baba.flowerAction = kGiantBabaEatBomb;
+    baba.flowerMode = 0;
+}
+
 constexpr InPlaceDeath kInPlace[] = {
     {fpcNm_B_DR_e, argorokIsDead, argorokKill, argorokReady, false},
     {fpcNm_E_SM2_e, chuIsJelly, chuBecomeJelly, nullptr, false},
@@ -419,6 +438,7 @@ constexpr InPlaceDeath kInPlace[] = {
     {fpcNm_E_ZM_e, zantMaskIsDead, zantMaskKill, nullptr, false},
     {fpcNm_E_SW_e, moldormIsDead, moldormKill, nullptr, false},
     {fpcNm_E_TH_e, darkhammerIsDead, darkhammerKill, darkhammerReady, false},
+    {fpcNm_E_GB_e, giantBabaIsDead, giantBabaKill, nullptr, false},
     {fpcNm_E_DT_e, dekuToadIsDead, dekuToadKill, dekuToadReady, false},
     {fpcNm_E_FM_e, fyrusIsDead, fyrusKill, fyrusReady, false},
     {fpcNm_E_YMB_e, twilitBloatIsDead, twilitBloatKill, twilitBloatReady, false},
@@ -449,6 +469,7 @@ struct Record {
     // Sent, or dying by its own hand when a teammate's kill came.
     bool reported = false;
     bool remoteRemoved = false;
+    bool remoteBabaHead = false;
 };
 
 struct Out {
@@ -524,6 +545,7 @@ bool isKillSyncable(s16 procName, u32 params) {
     case fpcNm_E_KG_e:   // Young Gohma
     case fpcNm_E_BS_e:   // Stalkin (no puff: markDefeated)
     case fpcNm_E_HZ_e:   // Tile Worm (defeated in place)
+    case fpcNm_E_GB_e:   // Giant Baba
         return true;
     case fpcNm_B_DR_e:   // The main Argorok actor, excluding its part variants.
         return (params & 0xFF) == 0;
@@ -687,6 +709,22 @@ void applyDeathSwitch(fopAc_ac_c* actor, const Kill& kill) {
 bool s_holdRemoteDefeat = false;
 #endif
 
+bool prepareGiantBaba(Record& record) {
+    auto& baba = *reinterpret_cast<e_gb_class*>(record.actor);
+    if (dStage_roomControl_c::getStayNo() != record.key.roomNo ||
+        baba.headAction == kGiantBabaHeadStart || baba.demoMode != 0) {
+        return false;
+    }
+    if (baba.headAction != kGiantBabaHeadEnd) {
+        baba.actor.health = 0;
+        baba.headAction = kGiantBabaHeadEnd;
+        baba.mode = 0;
+        record.remoteBabaHead = true;
+        return false;
+    }
+    return baba.status == 0 && baba.flowerAction == kGiantBabaFlowerChance && baba.flowerMode == 2;
+}
+
 Apply tryApply(Pending& p, const char*& why) {
     const auto now = Clock::now();
     for (auto& [id, r] : s_records) {
@@ -734,6 +772,10 @@ Apply tryApply(Pending& p, const char*& why) {
         }
         if (r.inPlace != nullptr && r.inPlace->canStart != nullptr && !r.inPlace->canStart(ac)) {
             why = "the enemy is still spawning";
+            return Apply::Deferred;
+        }
+        if (r.key.procName == fpcNm_E_GB_e && !prepareGiantBaba(r)) {
+            why = "the Giant Baba flower is not ready";
             return Apply::Deferred;
         }
         if (r.key.procName == fpcNm_E_SM2_e && !chuCanBecomeJelly(ac)) {
@@ -855,9 +897,10 @@ bool onDisappear(const fopAc_ac_c* ac, uint8_t size, uint8_t type) {
         r->fxSize = size;
         r->fxType = type;
         // The replica plays the native puff. The original death rolls the item.
-        return r->remoteRemoved &&
+        return r->remoteBabaHead || (r->remoteRemoved &&
                (r->key.procName == fpcNm_E_HM_e || r->key.procName == fpcNm_E_AI_e ||
-                r->key.procName == fpcNm_E_ZM_e || r->key.procName == fpcNm_E_SW_e);
+                r->key.procName == fpcNm_E_ZM_e || r->key.procName == fpcNm_E_SW_e ||
+                r->key.procName == fpcNm_E_GB_e));
     }
     return false;
 }
