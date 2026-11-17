@@ -4,12 +4,16 @@
 
 - PR #30 : le grand Freezard déclenche sa division native et associe
   chaque petit Freezard à l’ordre de création du parent.
-- Le Hebi Baba reproduit la séquence de défaite et préserve sa feuille,
+- PR #31 : le Hebi Baba reproduit la séquence de défaite et préserve sa feuille,
   le drapeau de placement et la libération native du fruit. La consommation
   du Bomb Insect retire sa réplique sans déclencher une seconde explosion.
   La compilation du paquet Linux réussit. Aucun test ni lancement de
   Dusklight pour ces changements. Le relevé des placements laisse
-  29 profils sans gestion explicite des dégâts ou de la défaite.
+  29 profils sans gestion explicite des dégâts ou de la défaite avant le Cavalier fantôme.
+- Cavalier fantôme : ses coups réduisant les PV et sa défaite native
+  sont partagés. Sa disparition à l’expiration du délai reste locale.
+  Compilation Linux réussie, il reste 28 profils placés sans gestion
+  explicite des dégâts ou de la défaite à qualifier, dont des acteurs de scène.
 
 ## 2026-11-16
 

@@ -31,7 +31,9 @@ Cocher un critère seulement après vérification de son périmètre complet.
   conjoint des quatre acteurs restent à vérifier.
   La défaite du Hebi Baba et la consommation du Bomb Insect sont
   partagées dans le code. Les récompenses et les interactions avec les
-  bombes restent à vérifier à deux.
+  bombes restent à vérifier à deux. Le Cavalier fantôme partage les
+  dégâts et la défaite au combat. La fin de son délai d’apparition
+  reste locale. Son cycle complet reste à vérifier à deux.
 - [ ] Ennemis à un PV : tester les morts natives des rats, Leevers, Bombskits, Keese d'ombre et autres
   variantes. Vérifier les générations lors d'une mort suivie d'une nouvelle apparition.
   Les bébés Gohma placés à 1 PV partagent leurs défaites à l’épée et
