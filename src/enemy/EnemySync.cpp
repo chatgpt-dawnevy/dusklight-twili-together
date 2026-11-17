@@ -31,7 +31,9 @@
 #include "d/actor/d_a_e_sb.h"
 #include "d/actor/d_a_e_sw.h"
 #include "d/actor/d_a_e_th.h"
+#include "d/actor/d_a_e_yd.h"
 #include "d/actor/d_a_e_yg.h"
+#include "d/actor/d_a_e_yh.h"
 #include "d/actor/d_a_e_vt.h"
 #include "d/actor/d_a_e_yk.h"
 #include "d/actor/d_a_e_ymb.h"
@@ -45,6 +47,7 @@
 #include "d/d_camera.h"
 #include "d/d_com_inf_game.h"
 #include "d/d_event.h"
+#include "JSystem/JParticle/JPAEmitter.h"
 #include "Z2AudioLib/Z2AudioMgr.h"
 #include "f_op/f_op_actor_mng.h"
 #include "f_pc/f_pc_layer.h"
@@ -502,6 +505,32 @@ void phantomRiderKill(fopAc_ac_c* ac) {
     // Keep the native damage action in charge of the defeat animation and collision.
 }
 
+bool twilitBabaIsDead(const fopAc_ac_c* ac) {
+    return ac->field_0x567 != 0;
+}
+
+void twilitBabaKill(fopAc_ac_c* ac) {
+    if (!fopAcM_delete(ac)) {
+        return;
+    }
+    ac->field_0x567 = 1;
+    ac->health = 0;
+    const cXyz scale(1.5f, 1.5f, 1.5f);
+    dComIfGp_particle_set(0x826C, &ac->current.pos, nullptr, &scale);
+    dComIfGp_particle_set(0x826D, &ac->current.pos, nullptr, &scale);
+    fopAcM_seStart(ac, Z2SE_DARK_VANISH, 0);
+    // Both actors stop their three ambient emitters. The source owns the loose reward.
+    const u32* particles = fopAcM_GetName(ac) == fpcNm_E_YD_e
+        ? reinterpret_cast<const e_yd_class*>(ac)->field_0x1238
+        : reinterpret_cast<const e_yh_class*>(ac)->mParticleIds;
+    for (int i = 0; i < 3; ++i) {
+        if (JPABaseEmitter* emitter = dComIfGp_particle_getEmitter(particles[i])) {
+            emitter->deleteAllParticle();
+            dComIfGp_particle_levelEmitterOnEventMove(particles[i]);
+        }
+    }
+}
+
 constexpr InPlaceDeath kInPlace[] = {
     {fpcNm_B_DR_e, argorokIsDead, argorokKill, argorokReady, false},
     {fpcNm_E_SM2_e, chuIsJelly, chuBecomeJelly, nullptr, false},
@@ -521,6 +550,8 @@ constexpr InPlaceDeath kInPlace[] = {
     {fpcNm_E_BI_e, bombInsectSpent, consumeBombInsect, nullptr, false},
     {fpcNm_E_HB_e, hebiBabaIsDead, hebiBabaKill, nullptr, false},
     {fpcNm_E_FK_e, phantomRiderIsFading, phantomRiderKill, nullptr, false},
+    {fpcNm_E_YD_e, twilitBabaIsDead, twilitBabaKill, nullptr, false},
+    {fpcNm_E_YH_e, twilitBabaIsDead, twilitBabaKill, nullptr, false},
     {fpcNm_E_DT_e, dekuToadIsDead, dekuToadKill, dekuToadReady, false},
     {fpcNm_E_FM_e, fyrusIsDead, fyrusKill, fyrusReady, false},
     {fpcNm_E_YMB_e, twilitBloatIsDead, twilitBloatKill, twilitBloatReady, false},
@@ -629,6 +660,8 @@ bool isKillSyncable(s16 procName, u32 params) {
     case fpcNm_E_HZ_e:   // Tile Worm (defeated in place)
     case fpcNm_E_GB_e:   // Giant Baba
     case fpcNm_E_BI_e:   // Bomb Insect
+    case fpcNm_E_YD_e:   // Twilit Baba
+    case fpcNm_E_YH_e:   // Twilit Baba variant
     case fpcNm_E_FK_e:   // Phantom Rider
     case fpcNm_E_HB_e:   // Hebi Baba
         return true;
@@ -872,6 +905,12 @@ Apply tryApply(Pending& p, const char*& why) {
         }
         if (r.inPlace != nullptr) {
             r.inPlace->kill(ac);
+            if ((r.key.procName == fpcNm_E_YD_e || r.key.procName == fpcNm_E_YH_e) &&
+                !twilitBabaIsDead(ac))
+            {
+                why = "the Twilit Baba delete was refused";
+                return Apply::Deferred;
+            }
             r.remoteRemoved = true;
             if (r.inPlace->needsPuff) {
                 spawnPuff(ac, ac->layer_tag.layer, p.kill);
@@ -1047,7 +1086,10 @@ void onActorDeleted(fopAc_ac_c* ac) {
     const bool paired = r.key.procName != fpcNm_E_FZ_e && !isUnset(r.disappearAt) && !isUnset(r.deleteAt) &&
                         (r.disappearAt > r.deleteAt ? r.disappearAt - r.deleteAt :
                                                       r.deleteAt - r.disappearAt) <= kPairWindow;
-    if (!r.defeated && !paired) {
+    // These actors set their death flag after scheduling deletion. A teardown never sets it.
+    const bool babaVanished = (r.key.procName == fpcNm_E_YD_e || r.key.procName == fpcNm_E_YH_e) &&
+                               twilitBabaIsDead(ac);
+    if (!r.defeated && !paired && !babaVanished) {
         return;  // room unload, scene teardown, despawn
     }
     // A frame after the delete request: e_db sets its zone actor bit right after asking.

@@ -10,10 +10,15 @@
   La compilation du paquet Linux réussit. Aucun test ni lancement de
   Dusklight pour ces changements. Le relevé des placements laisse
   29 profils sans gestion explicite des dégâts ou de la défaite avant le Cavalier fantôme.
-- Cavalier fantôme : ses coups réduisant les PV et sa défaite native
+- PR #32 : Cavalier fantôme : ses coups réduisant les PV et sa défaite native
   sont partagés. Sa disparition à l’expiration du délai reste locale.
   Compilation Linux réussie, il reste 28 profils placés sans gestion
   explicite des dégâts ou de la défaite à qualifier, dont des acteurs de scène.
+- Baba du Crépuscule : les profils E_YD et E_YH reproduisent leur
+  disparition et arrêtent leurs émetteurs sur la réplique. Le drapeau
+  natif distingue une défaite du déchargement de zone. Le paquet Linux
+  compile. Le relevé compte 26 profils placés à qualifier. Aucun test
+  ni lancement de Dusklight.
 
 ## 2026-11-16
 
