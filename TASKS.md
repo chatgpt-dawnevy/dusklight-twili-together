@@ -45,7 +45,8 @@ Cocher un critère seulement après vérification de son périmètre complet.
 - [ ] Objets et progression : vérifier les acquisitions et dépenses dans les deux modes de stock, les
   achats, bouteilles, échanges, clés, checks randomisés et exploration séparée suivie d'un rattrapage.
   Deux clients Linux ont réconcilié objets, événement et interrupteurs
-  persistants après exploration séparée et déconnexion.
+  persistants après exploration séparée et déconnexion. Le scénario du coffre
+  sur un seed chargé nativement est préparé et attend sa validation.
 - [ ] Robustesse : exécuter les suites existantes et les régressions avec transferts, retransmissions,
   désordre, 50/100/200 ms, latence variable, pertes, mort de Link et changements de room/layer.
   Le maintien WebSocket après 35 secondes au repos est vérifié sur Linux.

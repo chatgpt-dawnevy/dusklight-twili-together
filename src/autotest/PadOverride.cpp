@@ -1,5 +1,6 @@
 #include "autotest/AutoTest.hpp"
 #include "autotest/State.hpp"
+#include "core/SaveGate.hpp"
 
 #include <dolphin/pad.h>
 
@@ -15,6 +16,10 @@ using namespace detail;
 void overridePad(PADStatus* status) {
     State& s = state();
     if (!s.active || status == nullptr) {
+        return;
+    }
+    // Native save fixtures use the private display to select a card slot.
+    if (s.start.value("nativeSave", false) && !isSaveLoaded()) {
         return;
     }
     PADStatus& pad = status[0];

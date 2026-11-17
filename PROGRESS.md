@@ -339,3 +339,15 @@
 - Prochaine action — permettre au lanceur de conserver une sauvegarde
   du randomizer, la charger par le menu natif, puis vérifier à deux
   l’ouverture, l’objet accordé et la déduplication d’un coffre du seed.
+
+## 2026-11-17
+
+- PR #26 fusionnée par squash (`e1b9e03`), après les deux scénarios
+  Linux de seconde forme et les 130 tests du relais de la session précédente.
+- Branche `test/native-randomizer-seed`. Le lanceur accepte une copie locale
+  d’une vraie sauvegarde et du seed associé dans deux répertoires isolés.
+  Le scénario prévu vérifie le chargement natif, l’identité de l’équipe,
+  l’objet d’un coffre généré et le refus d’une deuxième ouverture.
+  Aucun test ni lancement de Dusklight effectué pendant cette reprise.
+- Prochaine action — préparer une sauvegarde persistée avant un
+  coffre d’équipement, puis exécuter le scénario quand les tests seront repris.

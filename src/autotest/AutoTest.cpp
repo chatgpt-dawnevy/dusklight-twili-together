@@ -5,6 +5,7 @@
 #include "core/Config.hpp"
 #include "core/Host.hpp"
 #include "core/Log.hpp"
+#include "core/SaveGate.hpp"
 
 #include "d/d_com_inf_game.h"
 #include "d/d_item.h"
@@ -116,17 +117,29 @@ bool runStep(const json& step) {
         return secondsSince(s.stepStartedAt) >= step.value("sec", 1.0);
     }
 
+    if (op == "waitNativeSave") {
+        if (isSaveLoaded() && dComIfGp_getPlayer(0) != nullptr && !dComIfGp_isEnableNextStage()) {
+            return true;
+        }
+        if (secondsSince(s.stepStartedAt) > stepTimeout(step)) {
+            fail("native save did not load through the game's save selection");
+        }
+        return false;
+    }
+
     if (op == "waitStage") {
         const std::string stage = step.value("stage", std::string{});
-        if (stageIsStable(stage)) {
+        const int room = step.value("room", -1);
+        if (stageIsStable(stage) && (room < 0 || dStage_roomControl_c::getStayNo() == room)) {
             TwiliLog.info("[autotest] in stage {} room {} layer {}", currentStage(),
                 dStage_roomControl_c::getStayNo(), dComIfG_play_c::getLayerNo(0));
             return true;
         }
         if (secondsSince(s.stepStartedAt) > stepTimeout(step)) {
-            fail(fmt::format("waitStage {} timed out after {:.0f}s (stage='{}' player={} "
+            fail(fmt::format("waitStage {} room {} timed out after {:.0f}s (stage='{}' room={} player={} "
                              "nextStagePending={} eventRunning={} ticks={})",
-                stage, stepTimeout(step), currentStage(), dComIfGp_getPlayer(0) != nullptr,
+                stage, room, stepTimeout(step), currentStage(), dStage_roomControl_c::getStayNo(),
+                dComIfGp_getPlayer(0) != nullptr,
                 dComIfGp_isEnableNextStage() != FALSE, dComIfGp_event_runCheck() != FALSE,
                 s.simTicks));
         }

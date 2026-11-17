@@ -102,7 +102,7 @@ using namespace detail;
 
 bool takeOverBoot(scene_class* logoScene) {
     State& s = state();
-    if (!s.active || !s.initFailure.empty()) {
+    if (!s.active || !s.initFailure.empty() || s.start.value("nativeSave", false)) {
         return false;
     }
     // Keep skipping: the original would point the next stage back at the title.

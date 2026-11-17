@@ -46,6 +46,32 @@ Exit code is 0 when every scenario passed. Output goes to `out/<timestamp>/<scen
 `<instance>.script.json` and, for network scenarios, `server.log`. `out/<timestamp>/summary.json`
 has every report of the run; with `--repeat` each round goes to `out/<timestamp>/run<N>/`.
 
+## Generated randomizer seed and native save
+
+`rando-native-chest` takes an existing test profile with a saved Randomizer
+quest log. Keep its region directory and its `mod_data/dev.twilitrealm.randomizer`
+directory together. Include any save sidecar and the profile's
+`keyboard_bindings.dat` if using a keyboard. Add `native-check.json` to the
+profile, with these fields:
+
+| Field | Value |
+| --- | --- |
+| `seed` | Generated seed hash as displayed in the load menu |
+| `stage`, `room`, `point`, `layer` | Entrance to the chosen chest room. `layer` defaults to -1. |
+| `tbox`, `item` | Chest bit and the shuffled item ID, as JSON integers. Choose a unique equipment reward that neither save already owns. |
+
+```sh
+node tools/autotest/run.js rando-native-chest --exe <linux-dusklight> \
+  --native-save <fixture-profile> --work <separate-work-tree>
+```
+
+The runner copies the save and seed into each test slot. Use the printed
+private display and each client's PID to load the same quest log through
+the game's native menu. The script takes over input after the save loads.
+It waits for a verified team match before entering the chest room, then
+checks that A opens the chest, the shuffled reward and chest state reach B,
+and B cannot open the chest a second time.
+
 ## Running the whole suite
 
 Without scenario names the runner runs everything except the manual scenarios (`manualOnly`:
