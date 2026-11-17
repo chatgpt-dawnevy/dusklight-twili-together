@@ -26,6 +26,9 @@ Cocher un critère seulement après vérification de son périmètre complet.
   Pour le Grand Baba, le partage des PV de la tête et de la défaite
   finale de la fleur est implémenté. Le partage immédiat de la mort
   de la tête, les attaques et l’obtention de la clé restent à vérifier.
+  La division du grand Freezard et l’identité de ses quatre petits
+  sont implémentées. Les impacts sur le parent et le comportement
+  conjoint des quatre acteurs restent à vérifier.
 - [ ] Ennemis à un PV : tester les morts natives des rats, Leevers, Bombskits, Keese d'ombre et autres
   variantes. Vérifier les générations lors d'une mort suivie d'une nouvelle apparition.
   Les bébés Gohma placés à 1 PV partagent leurs défaites à l’épée et

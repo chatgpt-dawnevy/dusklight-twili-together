@@ -385,3 +385,19 @@
   d’une variante précise ni les acteurs créés uniquement à l’exécution.
   Les prochaines familles non couvertes incluent le Bomb Insect,
   le Freezard de grande taille et le Hebi Baba.
+
+- PR #29 ouverte en brouillon sur la branche de la PR #28.
+- Branche `feature/freezard-split`. La défaite distante du grand
+  Freezard lance sa division native et son interrupteur. Les quatre
+  petits Freezards issus de cet acteur utilisent son placement et
+  l’ordre des demandes de création. Cela permet de leur adresser
+  les dégâts et défaites déjà pris en charge pour les petits
+  Freezards, même après la suppression du parent.
+- Compilation et empaquetage Linux x86-64 réussis. Aucun test
+  exécuté. Les coups non létaux du grand Freezard utilisent un
+  compteur natif et restent locaux. Les positions des petits,
+  les projectiles et les attaques restent à synchroniser.
+- Le relevé compte 31 profils placés sans entrée explicite dans
+  les listes de dégâts ou de défaites. Le prochain traitement
+  concerne les insectes-bombes et les Hebi Babas, en distinguant la
+  défaite d’une disparition ordinaire ou de la transformation en objet.

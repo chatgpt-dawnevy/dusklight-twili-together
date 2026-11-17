@@ -16,6 +16,7 @@
 #include "d/actor/d_a_e_bs.h"
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_fz.h"
+#include "d/actor/d_a_e_fb.h"
 #include "d/actor/d_a_e_oc.h"
 #include "d/actor/d_a_e_s1.h"
 #include "d/d_cc_uty.h"
@@ -36,6 +37,7 @@ DEFINE_HOOK_SYMBOL("src/d/actor/d_a_b_yo.cpp#daB_YO_Execute", int(daB_YO_c*), Bl
 DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_fm.cpp#daE_FM_Execute", int(e_fm_class*), FyrusExecute);
 DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_dt.cpp#daE_DT_Execute", int(daE_DT_c*), DekuToadExecute);
 DEFINE_HOOK(&daE_OC_c::execute, EocExecute);
+DEFINE_HOOK(&daE_FB_c::executeDamage, FreezardDamage);
 DEFINE_HOOK(&daE_OC_c::executeFallDead, EocExecuteFallDead);
 DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_s1.cpp#all_fail", void(e_s1_class*), Es1AllFail);
 DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_s1.cpp#e_s1_shout", void(e_s1_class*), Es1Shout);
@@ -50,6 +52,7 @@ const e_s1_class* s_shoutReset = nullptr;
 // cc_at_check does not recurse.
 fopAc_ac_c* s_hitEnemy = nullptr;
 s16 s_hitHealthBefore = 0;
+unsigned s_freezardSpawnOrdinal = 0;
 
 // The append is freed right after this returns.
 void onActorCreatePost(ModContext*, void* args, void* retval, void*) {
@@ -175,6 +178,17 @@ void onStageActorCreatePost(ModContext*, void* args, void*, void*) {
     Scope::pop(ScopeKind::StagePlaced, mods::arg<fopAcM_prm_class*>(args, 1));
 }
 
+HookAction onFreezardDamagePre(ModContext*, void* args, void*, void*) {
+    const auto* freezard = mods::arg<daE_FB_c*>(args, 0);
+    Scope::push(ScopeKind::FreezardSplit, freezard);
+    s_freezardSpawnOrdinal = 0;
+    return HOOK_CONTINUE;
+}
+
+void onFreezardDamagePost(ModContext*, void* args, void*, void*) {
+    Scope::pop(ScopeKind::FreezardSplit, mods::arg<daE_FB_c*>(args, 0));
+}
+
 // The append is how the request is matched to the stage's placement.
 void onStdCreateRequestPost(ModContext*, void* args, void* retval, void*) {
     auto* append = static_cast<fopAcM_prm_class*>(mods::arg<void*>(args, 4));
@@ -183,6 +197,14 @@ void onStdCreateRequestPost(ModContext*, void* args, void* retval, void*) {
     const auto profile = mods::arg<s16>(args, 1);
     if (Scope::owner(ScopeKind::StagePlaced) == append) {
         enemy_count::onPlacedRequested(id, profile, append);
+    }
+    if (profile == fpcNm_E_FZ_e && append->base.parameters == 1) {
+        const auto* source = static_cast<const daE_FB_c*>(Scope::owner(ScopeKind::FreezardSplit));
+        if (source != nullptr) {
+            if (const auto* parent = enemy_sync::trackedKey(fopAcM_GetID(source))) {
+                enemy_count::onFreezardChildRequested(id, *parent, s_freezardSpawnOrdinal++);
+            }
+        }
     }
     if (profile == fpcNm_E_RB_e || profile == fpcNm_E_HM_e) {
         enemy_count::onDirectChildRequested(id, profile, *append);
@@ -249,6 +271,8 @@ void onFyrusExecutePost(ModContext*, void* args, void*, void*) {
 
 ModResult installEnemy(std::string& error) {
     const ModResult results[] = {
+        addPre<FreezardDamage>(onFreezardDamagePre, kDefault, "daE_FB_c::executeDamage", error),
+        addPost<FreezardDamage>(onFreezardDamagePost, kDefault, "daE_FB_c::executeDamage", error),
         addPost<ArgorokExecute>(onArgorokExecutePost, kDefault, "daB_DR_Execute", error),
         addPost<BlizzetaExecute>(onBlizzetaExecutePost, kDefault, "daB_YO_Execute", error),
         addPost<DekuToadExecute>(onDekuToadExecutePost, kDefault, "daE_DT_Execute", error),

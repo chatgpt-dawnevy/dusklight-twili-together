@@ -18,6 +18,7 @@
 #include "d/actor/d_a_e_ai.h"
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_fm.h"
+#include "d/actor/d_a_e_fb.h"
 #include "d/actor/d_a_e_gb.h"
 #include "d/actor/d_a_e_gob.h"
 #include "d/actor/d_a_e_hz.h"
@@ -424,6 +425,24 @@ void giantBabaKill(fopAc_ac_c* ac) {
     baba.flowerMode = 0;
 }
 
+// daE_FB_c::action dispatches state 2 to the normal damage / split routine.
+constexpr int kFreezardDamage = 2;
+
+bool freezardIsDead(const fopAc_ac_c* ac) {
+    const auto& freezard = *static_cast<const daE_FB_c*>(ac);
+    return freezard.mActionMode == kFreezardDamage && freezard.field_0x68e >= 3;
+}
+
+void freezardKill(fopAc_ac_c* ac) {
+    auto& freezard = *static_cast<daE_FB_c*>(ac);
+    freezard.field_0x68e = 3;
+    freezard.mSphere.OffAtSetBit();
+    freezard.mSphere.OffTgSetBit();
+    freezard.mSphere2.OffAtSetBit();
+    freezard.mSphere2.OffTgSetBit();
+    freezard.setActionMode(kFreezardDamage, 0);
+}
+
 constexpr InPlaceDeath kInPlace[] = {
     {fpcNm_B_DR_e, argorokIsDead, argorokKill, argorokReady, false},
     {fpcNm_E_SM2_e, chuIsJelly, chuBecomeJelly, nullptr, false},
@@ -439,6 +458,7 @@ constexpr InPlaceDeath kInPlace[] = {
     {fpcNm_E_SW_e, moldormIsDead, moldormKill, nullptr, false},
     {fpcNm_E_TH_e, darkhammerIsDead, darkhammerKill, darkhammerReady, false},
     {fpcNm_E_GB_e, giantBabaIsDead, giantBabaKill, nullptr, false},
+    {fpcNm_E_FB_e, freezardIsDead, freezardKill, nullptr, false},
     {fpcNm_E_DT_e, dekuToadIsDead, dekuToadKill, dekuToadReady, false},
     {fpcNm_E_FM_e, fyrusIsDead, fyrusKill, fyrusReady, false},
     {fpcNm_E_YMB_e, twilitBloatIsDead, twilitBloatKill, twilitBloatReady, false},
@@ -575,6 +595,10 @@ bool isKillSyncable(s16 procName, u32 params) {
         return (variant == 0 || variant == 1 || variant == 0xF) &&
             (color <= TYPE_PURPLE || color == TYPE_BLACK) &&
             (variant == 1 || size == 0 || size == 0xFF);
+    }
+    case fpcNm_E_FB_e: { // Large Freezard; breath projectiles use types 10 and 11.
+        const unsigned type = params & 0xFF;
+        return type <= 2 || type == 0xFF;
     }
     case fpcNm_E_FZ_e:   // Blizzeta owns and controls variant 3.
         return (params & 0xFF) != 3;
@@ -879,8 +903,8 @@ void onActorCreated(fopAc_ac_c* ac) {
     // An extra goes by its original's key, a spawner's child by its spawner's; others by the spawn
     // data, readable only now.
     if (location.stage[0] == '\0' ||
-        (!enemy_count::extraKey(fopAcM_GetID(ac), r.key) && !appendKey(ac, r.key) &&
-            !enemy_count::broodKey(ac, r.key)))
+        (!enemy_count::extraKey(fopAcM_GetID(ac), r.key) && !enemy_count::broodKey(ac, r.key) &&
+            !appendKey(ac, r.key)))
     {
         return;
     }
@@ -909,7 +933,9 @@ void onDeleteRequest(const fopAc_ac_c* ac) {
     if (Record* r = live(ac); r != nullptr && isUnset(r->deleteAt)) {
         r->deleteAt = Clock::now();
         // Twilight Vermin's only explicit deletion is in its native defeat routine.
-        if (r->key.procName == fpcNm_E_YG_e &&
+        if (r->key.procName == fpcNm_E_FB_e && freezardIsDead(ac)) {
+            r->defeated = true;
+        } else if (r->key.procName == fpcNm_E_YG_e &&
             reinterpret_cast<const e_yg_class*>(ac)->mDeathFlag != 0)
         {
             r->defeated = true;

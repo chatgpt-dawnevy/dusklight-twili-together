@@ -66,6 +66,7 @@ enum class ScopeKind : uint8_t {
     PlantedHit,
     EnemyDamage,
     StagePlaced,
+    FreezardSplit,
     DmapDraw,
     FmapDraw,
 };
