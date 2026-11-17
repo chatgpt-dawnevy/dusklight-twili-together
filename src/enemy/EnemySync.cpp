@@ -16,11 +16,14 @@
 #include "d/actor/d_a_b_bq.h"
 #include "d/actor/d_a_b_yo.h"
 #include "d/actor/d_a_e_ai.h"
+#include "d/actor/d_a_e_bi.h"
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_fb.h"
 #include "d/actor/d_a_e_gb.h"
 #include "d/actor/d_a_e_gob.h"
+#include "d/actor/d_a_e_hb.h"
+#include "d/actor/d_a_e_hb_leaf.h"
 #include "d/actor/d_a_e_hz.h"
 #include "d/actor/d_a_e_hm.h"
 #include "d/actor/d_a_e_s1.h"
@@ -443,6 +446,49 @@ void freezardKill(fopAc_ac_c* ac) {
     freezard.setActionMode(kFreezardDamage, 0);
 }
 
+// The Bomb Insect also deletes after its ordinary dive or fade.
+constexpr int kBombInsectWater = 6;
+constexpr int kBombInsectFade = 7;
+
+bool bombInsectSpent(const fopAc_ac_c* ac) {
+    const auto& insect = *reinterpret_cast<const e_bi_class*>(ac);
+    return insect.leaf_id != 0 && insect.action != kBombInsectWater &&
+           insect.action != kBombInsectFade;
+}
+
+void consumeBombInsect(fopAc_ac_c* ac) {
+    auto& insect = *reinterpret_cast<e_bi_class*>(ac);
+    // Native execute removes a consumed insect. The source owns the bomb or explosion.
+    insect.ignition_time = 0;
+    insect.damage_time = 60;
+    insect.action = kBombInsectFade;
+    insect.mode = 0;
+    insect.cc_cyl.OffTgSetBit();
+    insect.at_sph.OffAtSetBit();
+    insect.leaf_id = 1;
+}
+
+bool hebiBabaIsDead(const fopAc_ac_c* ac) {
+    return reinterpret_cast<const e_hb_class*>(ac)->field_0x850 != 0;
+}
+
+void hebiBabaKill(fopAc_ac_c* ac) {
+    auto& baba = *reinterpret_cast<e_hb_class*>(ac);
+    auto* leaf = static_cast<e_hb_leaf_class*>(fopAcM_SearchByID(baba.leaf_actor_id));
+    if (leaf != nullptr) {
+        const int itemBit = ac->field_0x564 == 0xFF ? -1 : ac->field_0x564;
+        const int item = itemBit < 0 || ac->field_0x565 == 0xFF ? -1 : ac->field_0x565;
+        // Keep the placement's persistent reward on both copies. Only the source rolls loose drops.
+        leaf->field_0x5bc = fopAcM_createBokkuri(fopAcM_GetSetId(ac), &ac->current.pos, item,
+            itemBit, fopAcM_GetRoomNo(ac), nullptr, 0, 0);
+    }
+    baba.field_0x124c = 0.0f;
+    dComIfGp_particle_set(0x8335, &baba.field_0x6a0[4], nullptr, nullptr);
+    baba.field_0x850 = 3;
+    baba.field_0x1230 = 10;
+    ac->health = 0;
+}
+
 constexpr InPlaceDeath kInPlace[] = {
     {fpcNm_B_DR_e, argorokIsDead, argorokKill, argorokReady, false},
     {fpcNm_E_SM2_e, chuIsJelly, chuBecomeJelly, nullptr, false},
@@ -459,6 +505,8 @@ constexpr InPlaceDeath kInPlace[] = {
     {fpcNm_E_TH_e, darkhammerIsDead, darkhammerKill, darkhammerReady, false},
     {fpcNm_E_GB_e, giantBabaIsDead, giantBabaKill, nullptr, false},
     {fpcNm_E_FB_e, freezardIsDead, freezardKill, nullptr, false},
+    {fpcNm_E_BI_e, bombInsectSpent, consumeBombInsect, nullptr, false},
+    {fpcNm_E_HB_e, hebiBabaIsDead, hebiBabaKill, nullptr, false},
     {fpcNm_E_DT_e, dekuToadIsDead, dekuToadKill, dekuToadReady, false},
     {fpcNm_E_FM_e, fyrusIsDead, fyrusKill, fyrusReady, false},
     {fpcNm_E_YMB_e, twilitBloatIsDead, twilitBloatKill, twilitBloatReady, false},
@@ -566,6 +614,8 @@ bool isKillSyncable(s16 procName, u32 params) {
     case fpcNm_E_BS_e:   // Stalkin (no puff: markDefeated)
     case fpcNm_E_HZ_e:   // Tile Worm (defeated in place)
     case fpcNm_E_GB_e:   // Giant Baba
+    case fpcNm_E_BI_e:   // Bomb Insect
+    case fpcNm_E_HB_e:   // Hebi Baba
         return true;
     case fpcNm_B_DR_e:   // The main Argorok actor, excluding its part variants.
         return (params & 0xFF) == 0;
@@ -933,7 +983,8 @@ void onDeleteRequest(const fopAc_ac_c* ac) {
     if (Record* r = live(ac); r != nullptr && isUnset(r->deleteAt)) {
         r->deleteAt = Clock::now();
         // Twilight Vermin's only explicit deletion is in its native defeat routine.
-        if (r->key.procName == fpcNm_E_FB_e && freezardIsDead(ac)) {
+        if ((r->key.procName == fpcNm_E_FB_e && freezardIsDead(ac)) ||
+            (r->key.procName == fpcNm_E_BI_e && bombInsectSpent(ac))) {
             r->defeated = true;
         } else if (r->key.procName == fpcNm_E_YG_e &&
             reinterpret_cast<const e_yg_class*>(ac)->mDeathFlag != 0)
