@@ -51,10 +51,12 @@ bool appendKey(const fopAc_ac_c* actor, SpawnKey& out);
 const SpawnKey* trackedKey(fpc_ProcID id);
 // Dying by its own hand or already removed: not to be touched.
 bool isDying(fpc_ProcID id);
+bool defeatedByTeammate(const fopAc_ac_c* actor);
 
 // Hook entry points.
 // fopAc_Create returned cPhs_COMPLEATE_e; the append is freed right after.
 void onActorCreated(fopAc_ac_c* actor);
+void onStallordHeadRequested(fpc_ProcID head, fpc_ProcID body);
 void onActorDeleted(fopAc_ac_c* actor);
 // The actor spawned its own death puff.
 // Returns whether this native puff should skip its item roll.

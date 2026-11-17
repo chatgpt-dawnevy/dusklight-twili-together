@@ -12,6 +12,7 @@
 #include "SSystem/SComponent/c_phase.h"
 #include "f_pc/f_pc_name.h"
 #include "d/actor/d_a_b_dr.h"
+#include "d/actor/d_a_b_ds.h"
 #include "d/actor/d_a_b_yo.h"
 #include "d/actor/d_a_e_bs.h"
 #include "d/actor/d_a_e_dt.h"
@@ -20,6 +21,7 @@
 #include "d/actor/d_a_e_fk.h"
 #include "d/actor/d_a_e_oc.h"
 #include "d/actor/d_a_e_s1.h"
+#include "d/actor/d_a_e_yr.h"
 #include "d/d_cc_uty.h"
 #include "d/d_stage.h"
 #include "f_op/f_op_actor_mng.h"
@@ -39,6 +41,7 @@ DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_fm.cpp#daE_FM_Execute", int(e_fm_class*), 
 DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_dt.cpp#daE_DT_Execute", int(daE_DT_c*), DekuToadExecute);
 DEFINE_HOOK(&daE_OC_c::execute, EocExecute);
 DEFINE_HOOK(&daE_FB_c::executeDamage, FreezardDamage);
+DEFINE_HOOK(&daB_DS_c::executeDamage, StallordDamage);
 DEFINE_HOOK(&daE_OC_c::executeFallDead, EocExecuteFallDead);
 DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_s1.cpp#all_fail", void(e_s1_class*), Es1AllFail);
 DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_s1.cpp#e_s1_shout", void(e_s1_class*), Es1Shout);
@@ -47,6 +50,9 @@ DEFINE_HOOK(&daE_FK_c::At_Check, PhantomRiderAtCheck);
 DEFINE_HOOK_SYMBOL("src/d/d_stage.cpp#dStage_actorCreate",
     void(stage_actor_data_class*, fopAcM_prm_class*, size_t), StageActorCreate);
 DEFINE_HOOK(&fpcSCtRq_Request, StdCreateRequest);
+DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_yr.cpp#yr_disappear",
+    void(e_yr_class*), TwilitKargorokDisappear);
+DEFINE_HOOK(&fopAcM_createItemFromEnemyID, EnemyItemRoll);
 
 namespace {
 
@@ -112,6 +118,28 @@ HookAction onCreateDisappearPre(ModContext*, void* args, void*, void*) {
     if (Session::active() && enemy_sync::onDisappear(
             mods::arg<const fopAc_ac_c*>(args, 0), mods::arg<u8>(args, 2), mods::arg<u8>(args, 3))) {
         mods::arg_ref<u8>(args, 4) = 0xFF;
+    }
+    return HOOK_CONTINUE;
+}
+
+HookAction onTwilitKargorokDisappearPre(ModContext*, void* args, void*, void*) {
+    const auto* enemy = mods::arg<e_yr_class*>(args, 0);
+    Scope::push(ScopeKind::KargorokDefeat, &enemy->mEnemy);
+    return HOOK_CONTINUE;
+}
+
+void onTwilitKargorokDisappearPost(ModContext*, void* args, void*, void*) {
+    const auto* enemy = mods::arg<e_yr_class*>(args, 0);
+    Scope::pop(ScopeKind::KargorokDefeat, &enemy->mEnemy);
+}
+
+HookAction onEnemyItemRollPre(ModContext*, void* args, void* retval, void*) {
+    const auto* enemy = static_cast<const fopAc_ac_c*>(Scope::owner(ScopeKind::KargorokDefeat));
+    if (enemy != nullptr && mods::arg<const cXyz*>(args, 1) == &enemy->current.pos &&
+        enemy_sync::defeatedByTeammate(enemy))
+    {
+        *static_cast<fpc_ProcID*>(retval) = fpcM_ERROR_PROCESS_ID_e;
+        return HOOK_SKIP_ORIGINAL;
     }
     return HOOK_CONTINUE;
 }
@@ -191,6 +219,15 @@ void onFreezardDamagePost(ModContext*, void* args, void*, void*) {
     Scope::pop(ScopeKind::FreezardSplit, mods::arg<daE_FB_c*>(args, 0));
 }
 
+HookAction onStallordDamagePre(ModContext*, void* args, void*, void*) {
+    Scope::push(ScopeKind::StallordTransition, mods::arg<daB_DS_c*>(args, 0));
+    return HOOK_CONTINUE;
+}
+
+void onStallordDamagePost(ModContext*, void* args, void*, void*) {
+    Scope::pop(ScopeKind::StallordTransition, mods::arg<daB_DS_c*>(args, 0));
+}
+
 // The append is how the request is matched to the stage's placement.
 void onStdCreateRequestPost(ModContext*, void* args, void* retval, void*) {
     auto* append = static_cast<fopAcM_prm_class*>(mods::arg<void*>(args, 4));
@@ -206,6 +243,14 @@ void onStdCreateRequestPost(ModContext*, void* args, void* retval, void*) {
             if (const auto* parent = enemy_sync::trackedKey(fopAcM_GetID(source))) {
                 enemy_count::onFreezardChildRequested(id, *parent, s_freezardSpawnOrdinal++);
             }
+        }
+    }
+    if (profile == fpcNm_B_DS_e &&
+        (append->base.parameters & 0xFF) == daB_DS_c::TYPE_BATTLE_2)
+    {
+        const auto* body = static_cast<const daB_DS_c*>(Scope::owner(ScopeKind::StallordTransition));
+        if (body != nullptr) {
+            enemy_sync::onStallordHeadRequested(id, fopAcM_GetID(body));
         }
     }
     if (profile == fpcNm_E_RB_e || profile == fpcNm_E_HM_e) {
@@ -277,12 +322,19 @@ ModResult installEnemy(std::string& error) {
     const ModResult results[] = {
         addPre<FreezardDamage>(onFreezardDamagePre, kDefault, "daE_FB_c::executeDamage", error),
         addPost<FreezardDamage>(onFreezardDamagePost, kDefault, "daE_FB_c::executeDamage", error),
+        addPre<StallordDamage>(onStallordDamagePre, kDefault, "daB_DS_c::executeDamage", error),
+        addPost<StallordDamage>(onStallordDamagePost, kDefault, "daB_DS_c::executeDamage", error),
         addPost<ArgorokExecute>(onArgorokExecutePost, kDefault, "daB_DR_Execute", error),
         addPost<BlizzetaExecute>(onBlizzetaExecutePost, kDefault, "daB_YO_Execute", error),
         addPost<DekuToadExecute>(onDekuToadExecutePost, kDefault, "daE_DT_Execute", error),
         addPost<FyrusExecute>(onFyrusExecutePost, kDefault, "daE_FM_Execute", error),
         addPre<EocExecute>(onEocExecutePre, kDefault, "daE_OC_c::execute", error),
         addPost<EocExecute>(onEocExecutePost, kDefault, "daE_OC_c::execute", error),
+        addPre<TwilitKargorokDisappear>(onTwilitKargorokDisappearPre, kDefault,
+            "yr_disappear", error),
+        addPost<TwilitKargorokDisappear>(onTwilitKargorokDisappearPost, kDefault,
+            "yr_disappear", error),
+        addPre<EnemyItemRoll>(onEnemyItemRollPre, kDefault, "fopAcM_createItemFromEnemyID", error),
         addPost<ActorCreate>(onActorCreatePost, kDefault, "fopAc_Create", error),
         addPost<ActorDelete>(onActorDeletePost, kDefault, "fopAc_Delete", error),
         addPre<ActorDeleteRequest>(onDeleteRequestPre, kObserve, "fopAcM_delete", error),

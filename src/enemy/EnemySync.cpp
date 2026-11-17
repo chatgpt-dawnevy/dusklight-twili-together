@@ -2,6 +2,8 @@
 
 #include "enemy/EnemySync.hpp"
 
+#include "enemy/EnemyNativeDefeat.hpp"
+
 #include "boss/BossFight.hpp"
 #include "core/Log.hpp"
 #include "core/SaveGate.hpp"
@@ -17,6 +19,7 @@
 #include "d/actor/d_a_b_gg.h"
 #include "d/actor/d_a_b_yo.h"
 #include "d/actor/d_a_e_ai.h"
+#include "d/actor/d_a_e_bg.h"
 #include "d/actor/d_a_e_bi.h"
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_fk.h"
@@ -81,17 +84,6 @@ constexpr auto kStillDying = std::chrono::seconds(2);
 constexpr float kHomeTolerance = 1.0f;
 constexpr size_t kMaxPending = 64;
 constexpr size_t kMaxRecent = 256;
-
-// Enemies that die without being deleted: synced as "defeated in place".
-struct InPlaceDeath {
-    s16 procName;
-    bool (*isDead)(const fopAc_ac_c*);
-    void (*kill)(fopAc_ac_c*);
-    // A boss may have its own introductory scene or a player interaction to finish first.
-    bool (*ready)(const fopAc_ac_c*);
-    bool needsPuff;
-    bool (*canStart)(const fopAc_ac_c*) = nullptr;
-};
 
 bool hzIsDead(const fopAc_ac_c* ac) {
     return static_cast<const daE_HZ_c*>(ac)->field_0x6e8 != 0;
@@ -644,6 +636,7 @@ struct Recent {
 };
 
 std::unordered_map<fpc_ProcID, Record> s_records;
+std::unordered_map<fpc_ProcID, fpc_ProcID> s_stallordHeads;
 std::vector<Out> s_outbox;
 std::vector<Pending> s_pending;
 std::vector<Recent> s_recent;
@@ -657,6 +650,9 @@ void logKill(const char* what, const Kill& k) {
 
 // An explicit allowlist: the ENEMY group also holds bosses and mini-bosses.
 bool isKillSyncable(s16 procName, u32 params) {
+    if (findEncounterDefeat(procName, params) != nullptr) {
+        return true;
+    }
     switch (procName) {
     case fpcNm_E_OC_e:   // Bokoblin (its fall death has no puff: markDefeated)
     case fpcNm_E_MF_e:   // Dynalfos
@@ -699,6 +695,7 @@ bool isKillSyncable(s16 procName, u32 params) {
     case fpcNm_E_BS_e:   // Stalkin (no puff: markDefeated)
     case fpcNm_E_HZ_e:   // Tile Worm (defeated in place)
     case fpcNm_E_GB_e:   // Giant Baba
+    case fpcNm_E_BG_e:   // Bomb Fish
     case fpcNm_E_BI_e:   // Bomb Insect
     case fpcNm_E_YD_e:   // Twilit Baba
     case fpcNm_E_YH_e:   // Twilit Baba variant
@@ -851,6 +848,13 @@ void releaseKargorokTarget(fopAc_ac_c* actor, const SpawnKey& key) {
 }
 
 void applyDeathSwitch(fopAc_ac_c* actor, const Kill& kill) {
+    if (kill.key.procName == fpcNm_E_BG_e && kill.defeatSwitch) {
+        sync::RemoteApplyGuard guard;
+        const auto& fish = *static_cast<const daE_BG_c*>(actor);
+        if (fish.field_0x68d == 0 && fish.field_0x68c != 0xFF) {
+            fopAcM_onSwitch(actor, fish.field_0x68c);
+        }
+    }
     const SpawnKey& key = kill.key;
     unsigned bit = 0xFF;
     if (key.procName == fpcNm_E_YM_e || key.procName == fpcNm_E_YK_e) {
@@ -933,7 +937,11 @@ Apply tryApply(Pending& p, const char*& why) {
             return Apply::Deferred;
         }
         if (r.inPlace != nullptr && r.inPlace->canStart != nullptr && !r.inPlace->canStart(ac)) {
-            why = "the enemy is still spawning";
+            why = "the enemy is not ready for the native ending";
+            return Apply::Deferred;
+        }
+        if (r.inPlace != nullptr && r.inPlace->prepare != nullptr && !r.inPlace->prepare(ac)) {
+            why = "the enemy is entering the phase required by its ending";
             return Apply::Deferred;
         }
         if (r.key.procName == fpcNm_E_GB_e && !prepareGiantBaba(r)) {
@@ -972,7 +980,9 @@ Apply tryApply(Pending& p, const char*& why) {
         r.remoteRemoved = true;
         releaseKargorokTarget(ac, r.key);
         applyDeathSwitch(ac, p.kill);
-        spawnPuff(ac, layer, p.kill);
+        if (r.key.procName != fpcNm_E_BG_e) {
+            spawnPuff(ac, layer, p.kill);
+        }
         ++s_stats.applied;
         TwiliLog.info("[enemy] removed {} ({}): defeated by a teammate",
             fopAcM_getProcNameString(ac), keyText(r.key));
@@ -1038,7 +1048,29 @@ bool isDying(fpc_ProcID id) {
            (r.inPlace != nullptr && r.inPlace->isDead(r.actor));
 }
 
+bool defeatedByTeammate(const fopAc_ac_c* ac) {
+    const auto it = s_records.find(fopAcM_GetID(ac));
+    return it != s_records.end() && it->second.remoteRemoved;
+}
+
+void onStallordHeadRequested(fpc_ProcID head, fpc_ProcID body) {
+    if (head != fpcM_ERROR_PROCESS_ID_e && s_records.contains(body)) {
+        s_stallordHeads.insert_or_assign(head, body);
+    }
+}
+
 void onActorCreated(fopAc_ac_c* ac) {
+    const auto id = fopAcM_GetID(ac);
+    if (auto request = s_stallordHeads.extract(id); !request.empty()) {
+        if (auto body = s_records.extract(request.mapped()); !body.empty()) {
+            // The arena spawned a replacement actor during the transition. Keep the
+            // original placement and incarnation so an already pending defeat follows it.
+            body.key() = id;
+            body.mapped().actor = ac;
+            s_records.insert(std::move(body));
+            return;
+        }
+    }
     if (!isKillSyncable(fopAcM_GetName(ac), fopAcM_GetParam(ac))) {
         return;
     }
@@ -1055,8 +1087,11 @@ void onActorCreated(fopAc_ac_c* ac) {
     r.incarnation = s_nextIncarnation++;
     r.actor = ac;
     r.inPlace = findInPlace(r.key.procName);
+    if (r.inPlace == nullptr) {
+        r.inPlace = findEncounterDefeat(r.key.procName, r.key.params);
+    }
     r.location = location;
-    s_records[fopAcM_GetID(ac)] = r;
+    s_records[id] = r;
 }
 
 bool onDisappear(const fopAc_ac_c* ac, uint8_t size, uint8_t type) {
@@ -1065,7 +1100,12 @@ bool onDisappear(const fopAc_ac_c* ac, uint8_t size, uint8_t type) {
         if (r->key.procName == fpcNm_E_FK_e && ac->health > 0) {
             return false;
         }
-        // The Aeralfos helmet also produces a puff, outside the actual defeat.
+        // Encounter actors may also create puffs for armour or other effects.
+        if (const auto* encounter = findEncounterDefeat(r->key.procName, r->key.params);
+            encounter != nullptr && !encounter->isDead(ac))
+        {
+            return false;
+        }
         if (r->key.procName == fpcNm_B_GG_e && !aeralfosIsDead(ac)) {
             return false;
         }
@@ -1077,7 +1117,8 @@ bool onDisappear(const fopAc_ac_c* ac, uint8_t size, uint8_t type) {
                (r->key.procName == fpcNm_E_HM_e || r->key.procName == fpcNm_E_AI_e ||
                 r->key.procName == fpcNm_E_ZM_e || r->key.procName == fpcNm_E_SW_e ||
                 r->key.procName == fpcNm_E_GB_e || r->key.procName == fpcNm_E_FK_e ||
-                r->key.procName == fpcNm_B_GG_e));
+                r->key.procName == fpcNm_B_GG_e ||
+                r->key.procName == fpcNm_B_TN_e));
     }
     return false;
 }
@@ -1086,7 +1127,13 @@ void onDeleteRequest(const fopAc_ac_c* ac) {
     if (Record* r = live(ac); r != nullptr && isUnset(r->deleteAt)) {
         r->deleteAt = Clock::now();
         // Twilight Vermin's only explicit deletion is in its native defeat routine.
-        if ((r->key.procName == fpcNm_E_FB_e && freezardIsDead(ac)) ||
+        if (r->key.procName == fpcNm_E_BG_e) {
+            // Explicit native deletion means the fish detonated or became a carried Water Bomb.
+            const auto& fish = *static_cast<const daE_BG_c*>(ac);
+            r->defeated = true;
+            r->defeatSwitch = fish.field_0x68d == 0 && fish.field_0x68c != 0xFF &&
+                dComIfGs_isSwitch(fish.field_0x68c, fopAcM_GetRoomNo(ac));
+        } else if ((r->key.procName == fpcNm_E_FB_e && freezardIsDead(ac)) ||
             (r->key.procName == fpcNm_E_BI_e && bombInsectSpent(ac))) {
             r->defeated = true;
         } else if (r->key.procName == fpcNm_E_YG_e &&
@@ -1283,6 +1330,7 @@ void resetSession() {
 void shutdown() {
     resetSession();
     s_records.clear();
+    s_stallordHeads.clear();
 }
 
 const Stats& stats() {

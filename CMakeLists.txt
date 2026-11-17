@@ -61,6 +61,7 @@ set(TWILI_SOURCES
     src/enemy/EnemyDefeated.cpp
     src/enemy/EnemyScaling.cpp
     src/enemy/EnemySync.cpp
+    src/enemy/EnemyNativeDefeat.cpp
     src/fx/Fishing.cpp
     src/fx/GetItem.cpp
     src/fx/ItemFx.cpp

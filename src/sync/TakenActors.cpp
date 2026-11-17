@@ -3,6 +3,7 @@
 #include "sync/WorldSyncState.hpp"
 
 #include "core/Log.hpp"
+#include "enemy/EnemySync.hpp"
 #include "sync/RemoteApplyGuard.hpp"
 
 #include "m_Do/m_Do_ext.h"  // the enemy headers are not self-contained
@@ -152,7 +153,7 @@ void* findDying(void* proc, void* data) {
     auto* actor = static_cast<fopAc_ac_c*>(proc);
     auto* dying = static_cast<Dying*>(data);
     if (poeSwitch(actor) == dying->bitSw && fopAcM_IsExecuting(fopAcM_GetID(actor)) &&
-        poeDying(actor))
+        poeDying(actor) && !enemy_sync::defeatedByTeammate(actor))
     {
         dying->found = true;
         return actor;

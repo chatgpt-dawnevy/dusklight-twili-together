@@ -36,6 +36,10 @@ Cocher un critère seulement après vérification de son périmètre complet.
   reste locale. Son cycle complet reste à vérifier à deux. Les deux
   variantes du Baba du Crépuscule partagent leur défaite et conservent
   les effets de disparition. Le butin et les attaques restent à vérifier.
+  La branche des profils restants ajoute la disparition du Bomb Fish,
+  du Kargorok du Crépuscule et du soldat de Stallord, ainsi que
+  l’extraction pour les profils de Poe. Les Peahats et les Bullbos
+  restent à traiter pour leurs réactions, leurs déplacements et leurs interactions.
 - [ ] Ennemis à un PV : tester les morts natives des rats, Leevers, Bombskits, Keese d'ombre et autres
   variantes. Vérifier les générations lors d'une mort suivie d'une nouvelle apparition.
   Les bébés Gohma placés à 1 PV partagent leurs défaites à l’épée et
@@ -49,6 +53,11 @@ Cocher un critère seulement après vérification de son périmètre complet.
   La fin de l’Aeralfos attend que la réplique soit au sol et que
   la scène intermédiaire du mini-boss soit passée. Il reste à partager
   le vol, les dégâts et la transition intermédiaire, puis à valider la fin.
+  La branche des profils restants ajoute les fins natives de Stallord,
+  Morpheel, Armogohma, Zelda possédée, Ganon bestial, Ganondorf à pied,
+  Zant, Darknut, Ook, Zant Fantôme et Roi Bulblin à pied. La matrice de
+  PROGRESS.md détaille les préconditions, les variantes et les preuves
+  encore nécessaires. Les tests de campagne à deux restent ouverts.
   Argorok passe la fin, le miroir, le cœur et la sortie dans les
   deux directions du scénario Linux. Les deux ruptures d’armure
   déclenchées par l’un ou l’autre joueur mènent les deux clients à
