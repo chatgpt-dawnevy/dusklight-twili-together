@@ -19,6 +19,7 @@
 #include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_gob.h"
 #include "d/actor/d_a_e_hz.h"
+#include "d/actor/d_a_e_hm.h"
 #include "d/actor/d_a_e_s1.h"
 #include "d/actor/d_a_e_sb.h"
 #include "d/actor/d_a_e_yg.h"
@@ -307,6 +308,21 @@ void chuBecomeJelly(fopAc_ac_c* ac) {
     fopAcM_OffStatus(ac, fopAcStts_CULL_e);
 }
 
+constexpr int kTorchSlugDeath = 1;
+
+bool torchSlugIsDead(const fopAc_ac_c* ac) {
+    return static_cast<const daE_HM_c*>(ac)->field_0x5d4 == kTorchSlugDeath;
+}
+
+void torchSlugKill(fopAc_ac_c* ac) {
+    auto& slug = *static_cast<daE_HM_c*>(ac);
+    // ActionMode dispatches death to the floor, wall or ceiling variant.
+    slug.field_0x5d4 = kTorchSlugDeath;
+    slug.field_0x5d6 = 0;
+    slug.mSph.OffAtSetBit();
+    slug.mSph.OffTgSetBit();
+}
+
 constexpr InPlaceDeath kInPlace[] = {
     {fpcNm_B_DR_e, argorokIsDead, argorokKill, argorokReady, false},
     {fpcNm_E_SM2_e, chuIsJelly, chuBecomeJelly, nullptr, false},
@@ -316,6 +332,7 @@ constexpr InPlaceDeath kInPlace[] = {
     {fpcNm_E_SB_e, shellBladeIsDead, shellBladeKill, nullptr, false},
     {fpcNm_B_BQ_e, diababaIsDead, diababaKill, diababaReady, false},
     {fpcNm_E_HZ_e, hzIsDead, hzKill, nullptr, true},
+    {fpcNm_E_HM_e, torchSlugIsDead, torchSlugKill, nullptr, false},
     {fpcNm_E_DT_e, dekuToadIsDead, dekuToadKill, dekuToadReady, false},
     {fpcNm_E_FM_e, fyrusIsDead, fyrusKill, fyrusReady, false},
     {fpcNm_E_YMB_e, twilitBloatIsDead, twilitBloatKill, twilitBloatReady, false},
@@ -424,6 +441,10 @@ bool isKillSyncable(s16 procName, u32 params) {
         return true;
     case fpcNm_B_DR_e:   // The main Argorok actor, excluding its part variants.
         return (params & 0xFF) == 0;
+    case fpcNm_E_HM_e: { // Placed floor, wall and ceiling Torch Slugs.
+        const unsigned style = params & 0xFF;
+        return style == 0xFF || (style >= 1 && style <= 3);
+    }
     case fpcNm_E_GM_e:   // Placed Baby Gohma. Armogohma's core and brood run separate scripts.
         return (params & 0xFF) == 2;
     case fpcNm_E_SM2_e: {
@@ -724,12 +745,15 @@ void onActorCreated(fopAc_ac_c* ac) {
     s_records[fopAcM_GetID(ac)] = r;
 }
 
-void onDisappear(const fopAc_ac_c* ac, uint8_t size, uint8_t type) {
+bool onDisappear(const fopAc_ac_c* ac, uint8_t size, uint8_t type) {
     if (Record* r = live(ac)) {
         r->disappearAt = Clock::now();
         r->fxSize = size;
         r->fxType = type;
+        // The replica plays the native puff. The original death rolls the item.
+        return r->key.procName == fpcNm_E_HM_e && r->remoteRemoved;
     }
+    return false;
 }
 
 void onDeleteRequest(const fopAc_ac_c* ac) {

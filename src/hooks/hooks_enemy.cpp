@@ -104,9 +104,9 @@ HookAction onDeleteRequestIdPre(ModContext*, void* args, void*, void*) {
 }
 
 HookAction onCreateDisappearPre(ModContext*, void* args, void*, void*) {
-    if (Session::active()) {
-        enemy_sync::onDisappear(
-            mods::arg<const fopAc_ac_c*>(args, 0), mods::arg<u8>(args, 2), mods::arg<u8>(args, 3));
+    if (Session::active() && enemy_sync::onDisappear(
+            mods::arg<const fopAc_ac_c*>(args, 0), mods::arg<u8>(args, 2), mods::arg<u8>(args, 3))) {
+        mods::arg_ref<u8>(args, 4) = 0xFF;
     }
     return HOOK_CONTINUE;
 }

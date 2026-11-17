@@ -19,6 +19,8 @@ Cocher un critère seulement après vérification de son périmètre complet.
   position et orientation avec interpolation, cibles, attaques, collision, réactions et défaites.
   Le relevé des profils placés est documenté dans PROGRESS.md. Le passage
   à l’état de gelée des petits Chuchus a été testé sur deux clients Linux.
+  Le correctif de défaite des limaces de feu placées attend sa validation.
+  Leurs générateurs, déplacements et attaques restent à traiter.
 - [ ] Ennemis à un PV : tester les morts natives des rats, Leevers, Bombskits, Keese d'ombre et autres
   variantes. Vérifier les générations lors d'une mort suivie d'une nouvelle apparition.
   Les bébés Gohma placés à 1 PV partagent leurs défaites à l’épée et

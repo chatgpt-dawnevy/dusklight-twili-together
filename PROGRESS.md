@@ -339,3 +339,18 @@
 - Prochaine action — permettre au lanceur de conserver une sauvegarde
   du randomizer, la charger par le menu natif, puis vérifier à deux
   l’ouverture, l’objet accordé et la déduplication d’un coffre du seed.
+
+## 2026-11-17
+
+- PR #26 fusionnée par squash (`e1b9e03`) après la validation de Blizzeta.
+- La PR #27 contient le scénario préparé pour un coffre sur un seed
+  réel, avec chargement natif de la sauvegarde.
+- Branche `feature/torch-slug-native-death`. Les placements au sol,
+  au mur et au plafond utilisent leur action de défaite native à la
+  réception du message. Leurs interrupteurs restent pilotés par cette
+  action. Seule la copie source effectue le tirage du butin pour une
+  défaite reçue. Les générateurs et leurs enfants sont encore hors de
+  ce correctif. Aucun test exécuté pendant cette reprise.
+- Prochaine action — vérifier la mort, son interrupteur et son butin
+  sur deux clients pour chaque orientation, puis traiter les enfants
+  du générateur et les attaques.
