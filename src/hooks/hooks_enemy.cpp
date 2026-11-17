@@ -184,8 +184,8 @@ void onStdCreateRequestPost(ModContext*, void* args, void* retval, void*) {
     if (Scope::owner(ScopeKind::StagePlaced) == append) {
         enemy_count::onPlacedRequested(id, profile, append);
     }
-    if (profile == fpcNm_E_RB_e) {
-        enemy_count::onLeeverChildRequested(id, *append);
+    if (profile == fpcNm_E_RB_e || profile == fpcNm_E_HM_e) {
+        enemy_count::onDirectChildRequested(id, profile, *append);
     }
 }
 
