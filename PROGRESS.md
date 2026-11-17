@@ -372,3 +372,16 @@
   ne couvre pas les variantes exclues ni les acteurs uniquement générés.
   La prochaine famille à traiter est le Grand Baba, dont la tête et la
   fleur ont des défaites séparées et dont la fin libère une petite clé.
+
+- Branche `feature/giant-baba-native-clear`, basée sur la PR #28.
+  Les coups non létaux réduisent les PV de la tête. La défaite de
+  la fleur attend que la tête termine sa mort native, que la caméra
+  soit rendue à Link et que la fleur soit ouverte. Elle déclenche
+  ensuite la séquence native de la bombe et de la petite clé.
+  Compilation et empaquetage Linux x86-64 réussis. Aucun test en jeu
+  ni test du relais exécuté.
+- 32 profils placés restent sans entrée explicite dans les listes
+  de dégâts ou de défaites. Le relevé ne compte pas les omissions
+  d’une variante précise ni les acteurs créés uniquement à l’exécution.
+  Les prochaines familles non couvertes incluent le Bomb Insect,
+  le Freezard de grande taille et le Hebi Baba.

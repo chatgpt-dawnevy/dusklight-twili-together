@@ -23,6 +23,9 @@ Cocher un critère seulement après vérification de son périmètre complet.
   les Armos, les Moldorms ordinaires et les masques de Xanto combattants.
   Les déplacements et attaques de ces profils restent à traiter. La validation
   des générations de limaces et des interrupteurs reste prévue.
+  Pour le Grand Baba, le partage des PV de la tête et de la défaite
+  finale de la fleur est implémenté. Le partage immédiat de la mort
+  de la tête, les attaques et l’obtention de la clé restent à vérifier.
 - [ ] Ennemis à un PV : tester les morts natives des rats, Leevers, Bombskits, Keese d'ombre et autres
   variantes. Vérifier les générations lors d'une mort suivie d'une nouvelle apparition.
   Les bébés Gohma placés à 1 PV partagent leurs défaites à l’épée et
