@@ -140,13 +140,13 @@ std::unordered_map<fpc_ProcID, Job> s_jobs;
 std::unordered_map<fpc_ProcID, Extra> s_extras;
 std::unordered_map<fpc_ProcID, Brood> s_broods;
 std::unordered_map<fpc_ProcID, std::vector<BroodSlot>> s_broodSlots;
-// A Leever nest spawns a fixed sequence of children directly, without an
-// E_Make actor list. Number the requests, including subsequent broods.
-struct LeeverBrood {
+// Direct spawners do not expose an E_Make actor list. Number each
+// successful child request in order, including subsequent generations.
+struct DirectBrood {
     uint16_t next = 0;
     std::unordered_map<fpc_ProcID, uint16_t> children;
 };
-std::unordered_map<fpc_ProcID, LeeverBrood> s_leeverBroods;
+std::unordered_map<fpc_ProcID, DirectBrood> s_directBroods;
 
 const DupSpec* findSpec(s16 procName, u32 params, Place& place) {
     for (const DupSpec& s : kDupSpecs) {
@@ -520,10 +520,9 @@ void onActorDeleted(fopAc_ac_c* ac) {
     s_pending.erase(id);
     s_broods.erase(id);
     s_broodSlots.erase(id);
-    s_leeverBroods.erase(id);
-    if (fopAcM_GetName(ac) == fpcNm_E_RB_e) {
-        const auto nest = s_leeverBroods.find(ac->parentActorID);
-        if (nest != s_leeverBroods.end()) nest->second.children.erase(id);
+    s_directBroods.erase(id);
+    if (const auto nest = s_directBroods.find(ac->parentActorID); nest != s_directBroods.end()) {
+        nest->second.children.erase(id);
     }
 }
 
@@ -563,10 +562,12 @@ int extrasInRoom(int roomNo) {
     return roomExtras(static_cast<int8_t>(roomNo));
 }
 
-void onLeeverChildRequested(fpc_ProcID id, const fopAcM_prm_class& prm) {
-    if (id == fpcM_ERROR_PROCESS_ID_e || prm.parent_id == fpcM_ERROR_PROCESS_ID_e ||
-        (static_cast<uint32_t>(prm.base.parameters) & 0xff) != 1) return;
-    auto& nest = s_leeverBroods[prm.parent_id];
+void onDirectChildRequested(fpc_ProcID id, s16 profile, const fopAcM_prm_class& prm) {
+    if (id == fpcM_ERROR_PROCESS_ID_e || prm.parent_id == fpcM_ERROR_PROCESS_ID_e) return;
+    const unsigned type = prm.base.parameters & 0xFF;
+    if ((profile != fpcNm_E_RB_e || type != 1) &&
+        (profile != fpcNm_E_HM_e || type != 5)) return;
+    auto& nest = s_directBroods[prm.parent_id];
     if (nest.next >= 0x3F00) return;
     nest.children.emplace(id, nest.next++);
 }
@@ -577,17 +578,19 @@ bool broodKey(fopAc_ac_c* ac, enemy_sync::SpawnKey& out) {
         return false;
     }
     fopAc_ac_c* parent = fopAcM_SearchByID(prm->parent_id);
-    if (parent != nullptr && fopAcM_GetName(ac) == fpcNm_E_RB_e &&
-        fopAcM_GetName(parent) == fpcNm_E_RB_e) {
-        const auto nest = s_leeverBroods.find(prm->parent_id);
-        if (nest == s_leeverBroods.end()) return false;
+    const s16 profile = fopAcM_GetName(ac);
+    if (const auto nest = s_directBroods.find(prm->parent_id);
+        parent != nullptr && nest != s_directBroods.end() && fopAcM_GetName(parent) == profile &&
+        (profile == fpcNm_E_RB_e ||
+         (profile == fpcNm_E_HM_e && (fopAcM_GetParam(parent) & 0xFF) == 4))) {
         const auto child = nest->second.children.find(fopAcM_GetID(ac));
-        if (child == nest->second.children.end()) return false;
-        const cXyz& home = parent->home.pos;
-        out = {fpcNm_E_RB_e, fopAcM_GetHomeRoomNo(parent),
-            static_cast<uint32_t>(prm->base.parameters),
-            static_cast<uint16_t>(kBroodSetId + child->second), {home.x, home.y, home.z}};
-        return true;
+        if (child != nest->second.children.end()) {
+            const cXyz& home = parent->home.pos;
+            out = {fopAcM_GetName(ac), fopAcM_GetHomeRoomNo(parent),
+                static_cast<uint32_t>(prm->base.parameters),
+                static_cast<uint16_t>(kBroodSetId + child->second), {home.x, home.y, home.z}};
+            return true;
+        }
     }
     if (parent == nullptr || fopAcM_GetName(parent) != fpcNm_Obj_E_CREATE_e) {
         return false;
@@ -705,7 +708,7 @@ void shutdown() {
     s_extras.clear();
     s_broods.clear();
     s_broodSlots.clear();
-    s_leeverBroods.clear();
+    s_directBroods.clear();
 }
 
 }  // namespace twili::enemy_count

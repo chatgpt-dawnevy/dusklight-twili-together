@@ -15,16 +15,21 @@
 
 #include "d/actor/d_a_b_bq.h"
 #include "d/actor/d_a_b_yo.h"
+#include "d/actor/d_a_e_ai.h"
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_gob.h"
 #include "d/actor/d_a_e_hz.h"
+#include "d/actor/d_a_e_hm.h"
 #include "d/actor/d_a_e_s1.h"
 #include "d/actor/d_a_e_sb.h"
+#include "d/actor/d_a_e_sw.h"
+#include "d/actor/d_a_e_th.h"
 #include "d/actor/d_a_e_yg.h"
 #include "d/actor/d_a_e_vt.h"
 #include "d/actor/d_a_e_yk.h"
 #include "d/actor/d_a_e_ymb.h"
+#include "d/actor/d_a_e_zm.h"
 #include "d/actor/d_a_b_dr.h"
 #include "d/actor/d_a_e_gm.h"
 #include "d/actor/d_a_e_sm2.h"
@@ -34,6 +39,7 @@
 #include "d/d_camera.h"
 #include "d/d_com_inf_game.h"
 #include "d/d_event.h"
+#include "Z2AudioLib/Z2AudioMgr.h"
 #include "f_op/f_op_actor_mng.h"
 #include "f_pc/f_pc_layer.h"
 #include "f_pc/f_pc_name.h"
@@ -74,6 +80,7 @@ struct InPlaceDeath {
     // A boss may have its own introductory scene or a player interaction to finish first.
     bool (*ready)(const fopAc_ac_c*);
     bool needsPuff;
+    bool (*canStart)(const fopAc_ac_c*) = nullptr;
 };
 
 bool hzIsDead(const fopAc_ac_c* ac) {
@@ -307,6 +314,97 @@ void chuBecomeJelly(fopAc_ac_c* ac) {
     fopAcM_OffStatus(ac, fopAcStts_CULL_e);
 }
 
+constexpr int kTorchSlugDeath = 1;
+
+bool torchSlugCanDie(const fopAc_ac_c* ac) {
+    const int style = static_cast<const daE_HM_c*>(ac)->field_0x5d2;
+    return style >= 1 && style <= 3;
+}
+
+bool torchSlugIsDead(const fopAc_ac_c* ac) {
+    return torchSlugCanDie(ac) && static_cast<const daE_HM_c*>(ac)->field_0x5d4 == kTorchSlugDeath;
+}
+
+void torchSlugKill(fopAc_ac_c* ac) {
+    auto& slug = *static_cast<daE_HM_c*>(ac);
+    // ActionMode dispatches death to the floor, wall or ceiling variant.
+    slug.field_0x5d4 = kTorchSlugDeath;
+    slug.field_0x5d6 = 0;
+    slug.mSph.OffAtSetBit();
+    slug.mSph.OffTgSetBit();
+}
+
+bool armosIsDead(const fopAc_ac_c* ac) {
+    const auto& armos = *static_cast<const e_ai_class*>(ac);
+    return armos.m_action == e_ai_class::ACTION_DAMAGE && armos.field_0x692 == 0 &&
+           armos.m_hitCount >= 3;
+}
+
+void armosKill(fopAc_ac_c* ac) {
+    auto& armos = *static_cast<e_ai_class*>(ac);
+    // The third hit runs the native timed explosion and its room switch.
+    armos.m_action = e_ai_class::ACTION_DAMAGE;
+    armos.m_mode = 0;
+    armos.field_0x692 = 0;
+    armos.field_0x694 = 0;
+    armos.m_hitCount = 3;
+    armos.field_0x6ba = 200;
+    armos.m_timers[2] = 0;
+}
+
+// d_a_e_zm.cpp's ACTION_DEAD value; its enum is local to that file.
+constexpr int kZantMaskDeath = 5;
+
+bool zantMaskIsDead(const fopAc_ac_c* ac) {
+    return static_cast<const daE_ZM_c*>(ac)->mAction == kZantMaskDeath;
+}
+
+void zantMaskKill(fopAc_ac_c* ac) {
+    auto& mask = *static_cast<daE_ZM_c*>(ac);
+    mask.health = 1;
+    mask.setActionMode(kZantMaskDeath, 0);
+}
+
+bool moldormIsDead(const fopAc_ac_c* ac) {
+    const auto& worm = *static_cast<const daE_SW_c*>(ac);
+    return worm.field_0xafc == &daE_SW_c::d_die ||
+           (worm.field_0xafc == &daE_SW_c::d_damage && worm.field_0x698 <= 0);
+}
+
+void moldormKill(fopAc_ac_c* ac) {
+    auto& worm = *static_cast<daE_SW_c*>(ac);
+    worm.health = 0;
+    worm.field_0x698 = 0;
+    worm.mAtInfo.mHitDirection.y = static_cast<s16>(worm.current.angle.y - 0x8000);
+    worm.d_setAction(&daE_SW_c::d_damage);
+}
+
+// Darkhammer's action enum in d_a_e_th.cpp.
+constexpr int kDarkhammerStart = 22;
+constexpr int kDarkhammerEnd = 25;
+
+bool darkhammerIsDead(const fopAc_ac_c* ac) {
+    return static_cast<const e_th_class*>(ac)->mAction == kDarkhammerEnd;
+}
+
+bool darkhammerReady(const fopAc_ac_c* ac) {
+    const auto& boss = *static_cast<const e_th_class*>(ac);
+    // The death camera moves the original Ball and Chain actor.
+    return boss.mAction < kDarkhammerStart && boss.mDemoCamMode == 0 &&
+           fopAcM_IsExecuting(boss.mBallID);
+}
+
+void darkhammerKill(fopAc_ac_c* ac) {
+    auto& boss = *static_cast<e_th_class*>(ac);
+    boss.health = 0;
+    dComIfGs_onOneZoneSwitch(3, -1);
+    boss.mAction = kDarkhammerEnd;
+    boss.mMode = 0;
+    boss.field_0x68a |= 4;
+    boss.mDemoCamMode = 10;
+    Z2GetAudioMgr()->subBgmStop();
+}
+
 constexpr InPlaceDeath kInPlace[] = {
     {fpcNm_B_DR_e, argorokIsDead, argorokKill, argorokReady, false},
     {fpcNm_E_SM2_e, chuIsJelly, chuBecomeJelly, nullptr, false},
@@ -316,6 +414,11 @@ constexpr InPlaceDeath kInPlace[] = {
     {fpcNm_E_SB_e, shellBladeIsDead, shellBladeKill, nullptr, false},
     {fpcNm_B_BQ_e, diababaIsDead, diababaKill, diababaReady, false},
     {fpcNm_E_HZ_e, hzIsDead, hzKill, nullptr, true},
+    {fpcNm_E_HM_e, torchSlugIsDead, torchSlugKill, nullptr, false, torchSlugCanDie},
+    {fpcNm_E_AI_e, armosIsDead, armosKill, nullptr, false},
+    {fpcNm_E_ZM_e, zantMaskIsDead, zantMaskKill, nullptr, false},
+    {fpcNm_E_SW_e, moldormIsDead, moldormKill, nullptr, false},
+    {fpcNm_E_TH_e, darkhammerIsDead, darkhammerKill, darkhammerReady, false},
     {fpcNm_E_DT_e, dekuToadIsDead, dekuToadKill, dekuToadReady, false},
     {fpcNm_E_FM_e, fyrusIsDead, fyrusKill, fyrusReady, false},
     {fpcNm_E_YMB_e, twilitBloatIsDead, twilitBloatKill, twilitBloatReady, false},
@@ -424,6 +527,22 @@ bool isKillSyncable(s16 procName, u32 params) {
         return true;
     case fpcNm_B_DR_e:   // The main Argorok actor, excluding its part variants.
         return (params & 0xFF) == 0;
+    case fpcNm_E_TH_e:   // Darkhammer in the fight room, excluding the entrance actor.
+        return (params & 0xFF) == 2;
+    case fpcNm_E_SW_e: { // Moldorm; only the ordinary d_execute path.
+        const unsigned type = (params >> 12) & 0xF;
+        return type == 0 || type == 0xF;
+    }
+    case fpcNm_E_ZM_e: { // Zant Mask; skip controllers and projectiles.
+        const unsigned type = params & 0xFF;
+        return type <= 2 || type == 0xFF;
+    }
+    case fpcNm_E_AI_e:   // Armos
+        return true;
+    case fpcNm_E_HM_e: { // Placed floor, wall and ceiling Torch Slugs and spawner children.
+        const unsigned style = params & 0xFF;
+        return style == 0xFF || (style >= 1 && style <= 3) || style == 5;
+    }
     case fpcNm_E_GM_e:   // Placed Baby Gohma. Armogohma's core and brood run separate scripts.
         return (params & 0xFF) == 2;
     case fpcNm_E_SM2_e: {
@@ -613,6 +732,10 @@ Apply tryApply(Pending& p, const char*& why) {
             why = "the local boss fight is not ready";
             return Apply::Deferred;
         }
+        if (r.inPlace != nullptr && r.inPlace->canStart != nullptr && !r.inPlace->canStart(ac)) {
+            why = "the enemy is still spawning";
+            return Apply::Deferred;
+        }
         if (r.key.procName == fpcNm_E_SM2_e && !chuCanBecomeJelly(ac)) {
             return Apply::Obsolete;
         }
@@ -681,8 +804,10 @@ bool appendKey(const fopAc_ac_c* actor, SpawnKey& out) {
     if (prm == nullptr || prm->parent_id != fpcM_ERROR_PROCESS_ID_e) {
         return false;
     }
+    const s16 profile = fopAcM_GetName(ac);
+    if (profile == fpcNm_E_HM_e && (prm->base.parameters & 0xFF) == 5) return false;
     const cXyz home = prm->base.position;
-    out = {fopAcM_GetName(ac), prm->room_no, static_cast<uint32_t>(prm->base.parameters),
+    out = {profile, prm->room_no, static_cast<uint32_t>(prm->base.parameters),
         static_cast<uint16_t>(prm->base.setID), {home.x, home.y, home.z}};
     return true;
 }
@@ -724,12 +849,17 @@ void onActorCreated(fopAc_ac_c* ac) {
     s_records[fopAcM_GetID(ac)] = r;
 }
 
-void onDisappear(const fopAc_ac_c* ac, uint8_t size, uint8_t type) {
+bool onDisappear(const fopAc_ac_c* ac, uint8_t size, uint8_t type) {
     if (Record* r = live(ac)) {
         r->disappearAt = Clock::now();
         r->fxSize = size;
         r->fxType = type;
+        // The replica plays the native puff. The original death rolls the item.
+        return r->remoteRemoved &&
+               (r->key.procName == fpcNm_E_HM_e || r->key.procName == fpcNm_E_AI_e ||
+                r->key.procName == fpcNm_E_ZM_e || r->key.procName == fpcNm_E_SW_e);
     }
+    return false;
 }
 
 void onDeleteRequest(const fopAc_ac_c* ac) {

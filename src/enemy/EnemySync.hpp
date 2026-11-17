@@ -57,7 +57,8 @@ bool isDying(fpc_ProcID id);
 void onActorCreated(fopAc_ac_c* actor);
 void onActorDeleted(fopAc_ac_c* actor);
 // The actor spawned its own death puff.
-void onDisappear(const fopAc_ac_c* actor, uint8_t size, uint8_t type);
+// Returns whether this native puff should skip its item roll.
+bool onDisappear(const fopAc_ac_c* actor, uint8_t size, uint8_t type);
 // Game logic asked for the deletion (room unloads never come through here). May be null.
 void onDeleteRequest(const fopAc_ac_c* actor);
 void onDeleteRequest(fpc_ProcID id);

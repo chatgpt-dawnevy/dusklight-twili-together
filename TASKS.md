@@ -19,6 +19,10 @@ Cocher un critère seulement après vérification de son périmètre complet.
   position et orientation avec interpolation, cibles, attaques, collision, réactions et défaites.
   Le relevé des profils placés est documenté dans PROGRESS.md. Le passage
   à l’état de gelée des petits Chuchus a été testé sur deux clients Linux.
+  Le partage des défaites couvre dans le code les limaces placées ou générées,
+  les Armos, les Moldorms ordinaires et les masques de Xanto combattants.
+  Les déplacements et attaques de ces profils restent à traiter. La validation
+  des générations de limaces et des interrupteurs reste prévue.
 - [ ] Ennemis à un PV : tester les morts natives des rats, Leevers, Bombskits, Keese d'ombre et autres
   variantes. Vérifier les générations lors d'une mort suivie d'une nouvelle apparition.
   Les bébés Gohma placés à 1 PV partagent leurs défaites à l’épée et
@@ -41,7 +45,9 @@ Cocher un critère seulement après vérification de son périmètre complet.
   lorsque les joueurs alternent les coups dans les deux ordres.
   Les deux coups non létaux de la seconde forme et la destruction des
   dix glaçons passent également dans les deux directions. Les attaques,
-  les positions et le combat complet restent à vérifier.
+  les positions et le combat complet restent à vérifier. Le partage des dégâts
+  et de la défaite du chevalier au boulet est implémenté dans sa salle de combat.
+  Le boulet, l’obtention de l’objet et la sortie attendent leur validation.
 - [ ] Objets et progression : vérifier les acquisitions et dépenses dans les deux modes de stock, les
   achats, bouteilles, échanges, clés, checks randomisés et exploration séparée suivie d'un rattrapage.
   Deux clients Linux ont réconcilié objets, événement et interrupteurs

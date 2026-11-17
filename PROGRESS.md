@@ -339,3 +339,36 @@
 - Prochaine action — permettre au lanceur de conserver une sauvegarde
   du randomizer, la charger par le menu natif, puis vérifier à deux
   l’ouverture, l’objet accordé et la déduplication d’un coffre du seed.
+
+## 2026-11-17
+
+- PR #26 fusionnée par squash (`e1b9e03`) après la validation de Blizzeta.
+- La PR #27 contient le scénario préparé pour un coffre sur un seed
+  réel, avec chargement natif de la sauvegarde.
+- Branche `feature/torch-slug-native-death`. Les placements au sol,
+  au mur et au plafond utilisent leur action de défaite native à la
+  réception du message. Leurs interrupteurs restent pilotés par cette
+  action. Seule la copie source effectue le tirage du butin pour une
+  défaite reçue. Les générateurs et leurs enfants sont encore hors de
+  ce correctif. Aucun test exécuté pendant cette reprise.
+- Prochaine action — vérifier la mort, son interrupteur et son butin
+  sur deux clients pour chaque orientation, puis traiter les enfants
+  du générateur et les attaques.
+
+- La PR #28 étend la défaite native aux limaces de feu générées,
+  aux Armos, aux Moldorms ordinaires, aux masques de Xanto combattants
+  et au chevalier au boulet dans sa salle de combat.
+- Les limaces générées sont identifiées par le placement du générateur
+  et le numéro de la demande de création. Leur défaite distante attend
+  la fin de l’apparition. Les Armos, les Moldorms et les masques rejouent
+  leur fin native sans refaire le tirage de butin de la copie source.
+  Les masques et le chevalier partagent également les dégâts non létaux.
+  La fin du chevalier attend que sa cinématique d’introduction soit terminée
+  et que son boulet natif existe, car la scène de défaite le déplace.
+- Compilation et empaquetage Linux x86-64 réussis. Aucun test ni
+  lancement de Dusklight. La PR reste en brouillon.
+- Le relevé de l’ISO compte désormais 33 profils placés sans entrée
+  explicite dans les listes de dégâts ou de défaites du mod. Ce compte
+  ne couvre pas les variantes exclues ni les acteurs uniquement générés.
+  La prochaine famille à traiter est le Grand Baba, dont la tête et la
+  fleur ont des défaites séparées et dont la fin libère une petite clé.

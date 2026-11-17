@@ -72,6 +72,12 @@ Stats s_stats{};
 // remote hits never touch a revive state.
 bool isDamageShareable(s16 procName, u32 params) {
     switch (procName) {
+    case fpcNm_E_TH_e:   // Darkhammer in the fight room.
+        return (params & 0xFF) == 2;
+    case fpcNm_E_ZM_e: { // Zant Mask; skip controllers and projectiles.
+        const unsigned type = params & 0xFF;
+        return type <= 2 || type == 0xFF;
+    }
     case fpcNm_E_DT_e:   // Deku Toad
     case fpcNm_B_DR_e:   // Argorok
     case fpcNm_E_OC_e:   // Bokoblin
@@ -357,11 +363,11 @@ void poll() {
         const int hits = countedHitsLeft(r.actor);
         const int lostHits = hits >= 0 && r.lastHits > hits ? r.lastHits - hits : 0;
         // A lethal loss is a kill: enemy_sync reports it.
-        // Argorok subtracts sword damage directly in its weak-point handler.
+        // Argorok and Zant Masks also subtract some attacks without cc_at_check.
         const bool bossInArena = boss::fighting() && boss::inArena(r.location.stage.data(), fopAcM_GetRoomNo(r.actor)) &&
             fopAcM_GetRoomNo(r.actor) == dStage_roomControl_c::getStayNo();
-        const bool localDamage = r.key.procName == fpcNm_B_DR_e || recent(r.hitAt, now) ||
-            recent(r.biteAt, now);
+        const bool localDamage = r.key.procName == fpcNm_B_DR_e || r.key.procName == fpcNm_E_ZM_e ||
+            recent(r.hitAt, now) || recent(r.biteAt, now);
         if (share && (cur < r.lastHealth || lostHits > 0) && cur > 0 && hits != 0 && localDamage &&
             (!boss::isBossProfile(r.key.procName) || bossInArena) && !enemy_sync::isDying(id))
         {

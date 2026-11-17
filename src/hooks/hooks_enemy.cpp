@@ -104,9 +104,9 @@ HookAction onDeleteRequestIdPre(ModContext*, void* args, void*, void*) {
 }
 
 HookAction onCreateDisappearPre(ModContext*, void* args, void*, void*) {
-    if (Session::active()) {
-        enemy_sync::onDisappear(
-            mods::arg<const fopAc_ac_c*>(args, 0), mods::arg<u8>(args, 2), mods::arg<u8>(args, 3));
+    if (Session::active() && enemy_sync::onDisappear(
+            mods::arg<const fopAc_ac_c*>(args, 0), mods::arg<u8>(args, 2), mods::arg<u8>(args, 3))) {
+        mods::arg_ref<u8>(args, 4) = 0xFF;
     }
     return HOOK_CONTINUE;
 }
@@ -184,8 +184,8 @@ void onStdCreateRequestPost(ModContext*, void* args, void* retval, void*) {
     if (Scope::owner(ScopeKind::StagePlaced) == append) {
         enemy_count::onPlacedRequested(id, profile, append);
     }
-    if (profile == fpcNm_E_RB_e) {
-        enemy_count::onLeeverChildRequested(id, *append);
+    if (profile == fpcNm_E_RB_e || profile == fpcNm_E_HM_e) {
+        enemy_count::onDirectChildRequested(id, profile, *append);
     }
 }
 
