@@ -571,3 +571,51 @@ module.exports = [
         ],
     },
 ];
+
+module.exports.push({
+    name: "rando-native-chest",
+    description: "two native saves with the same generated seed share a real shuffled chest once",
+    manualOnly: true,
+    timeoutSec: 420,
+    cvars: [...COMMON_CVARS, ...RANDOMIZER_MODE_CVARS],
+    enableMods: [MODS.randomizer],
+    expectLog: [/\[dev\.twilitrealm\.randomizer\] activated seed /],
+    instances: [],
+    nativeSave(check) {
+        const { seed, stage, room, point, layer = -1, tbox, item } = check;
+        const inRange = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;
+        if (typeof seed !== "string" || !seed.trim() || typeof stage !== "string" ||
+            !/^[A-Za-z0-9_]{1,7}$/.test(stage) || !inRange(room, 0, 63) ||
+            !inRange(point, 0, 255) || !inRange(layer, -1, 14) ||
+            !inRange(tbox, 0, 63) || !inRange(item, 0, 254)) {
+            throw new Error("native-check.json needs the seed hash, stage, room, point, tbox and item ID");
+        }
+        return ["A", "B"].map(name => {
+            const other = name === "A" ? "B" : "A";
+            return {
+                name,
+                start: { nativeSave: true },
+                steps: [
+                    { op: "waitNativeSave", timeoutSec: 210 },
+                    { op: "expectLocalGame", kind: "randomizer", keyPrefix: "rando/", name: seed, verified: true },
+                    { op: "waitStorySettled", pressA: true, timeoutSec: 75 },
+                    ...connect,
+                    { op: "waitOwnWorldState" },
+                    { op: "waitPeers", count: 1 },
+                    { op: "expectMemberSync", peer: other, state: "ok" },
+                    { op: "warp", stage, room, point, layer },
+                    { op: "waitStage", stage, room },
+                    { op: "expectChestOpen", tbox, open: false },
+                    { op: "expectFirstBit", item, set: false },
+                    ...barrier("shuffled-chest-ready", other),
+                    ...(name === "A" ? [{ op: "openChest", tbox, approach: true }] : []),
+                    { op: "expectChestOpen", tbox },
+                    { op: "expectFirstBit", item },
+                    ...(name === "B" ? [{ op: "openChest", tbox, approach: true, refused: true }] : []),
+                    ...barrier("shuffled-chest-shared", other),
+                    { op: "quit" },
+                ],
+            };
+        });
+    },
+});

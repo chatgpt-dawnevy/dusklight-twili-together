@@ -8,7 +8,7 @@ const path = require("node:path");
 const zlib = require("node:zlib");
 const scenarios = require("./scenarios");
 const { virtualDisplay } = require("./virtual-display");
-const { MOD_ID, CONFIG_PREFIX, escapeModId } = require("./lib");
+const { MOD_ID, MODS, CONFIG_PREFIX, escapeModId } = require("./lib");
 
 const REPO = path.resolve(__dirname, "..", "..", "..", "..");
 const SERVER_JS = path.resolve(__dirname, "..", "server", "server.js");
@@ -40,6 +40,7 @@ const TEST_CONFIG = {
 };
 // All a run takes from the user's config: the disc image. Everything else is the game's default.
 const USER_CONFIG_KEYS = ["backend.isoPath", "backend.isoVerification"];
+const SAVE_REGIONS = ["USA", "EUR", "PAL", "JPN"];
 const SEED_CACHES = ["pipeline_cache.db", "dawn_cache.db"];
 const NET_OPS = new Set(["connect", "disconnect", "waitConnected", "waitPeers", "waitDummies",
     "waitNoDummies", "checkDummies", "expectPeers", "signal", "waitSignal"]);
@@ -69,6 +70,7 @@ function parseArgs(argv) {
         else if (a === "--list") opts.list = true;
         else if (a === "--work") WORK_DIR = path.resolve(argv[++i]);
         else if (a === "--out") OUT_DIR = path.resolve(argv[++i]);
+        else if (a === "--native-save") opts.nativeSave = path.resolve(argv[++i]);
         else if (a.startsWith("--")) throw new Error(`unknown option ${a}`);
         else opts.names.push(a);
     }
@@ -155,8 +157,9 @@ const slotCacheDir = (dir) => path.join(slotDataRoot(dir), "TwilitRealm", "Duskl
 function prepareSlot(index, modIds, enableMods) {
     const dir = path.join(WORK_DIR, `slot${index}`);
     fs.mkdirSync(dir, { recursive: true });
-    for (const name of ["logs", "USA", "PAL", "JPN", "achievements.json", "states.json", "mod_saves.json",
-        "mod_data", "mods"]) {
+    if (fs.lstatSync(dir).isSymbolicLink()) throw new Error(`Test slot is a symbolic link: ${dir}`);
+    for (const name of ["logs", ...SAVE_REGIONS, "achievements.json", "states.json",
+        "mod_saves.json", "mod_data", "mods", "keyboard_bindings.dat"]) {
         fs.rmSync(path.join(dir, name), { recursive: true, force: true });
     }
     let userConfig = {};
@@ -318,6 +321,37 @@ function withFixture(start) {
     return { ...start, fixtureData: JSON.parse(fs.readFileSync(file, "utf8")).save };
 }
 
+function copyNativeSave(source, dataDir) {
+    const inputs = [...SAVE_REGIONS, "mod_saves.json", "keyboard_bindings.dat",
+        path.join("mod_data", MODS.randomizer)];
+    for (const rel of inputs) {
+        const input = path.join(source, rel);
+        if (!fs.existsSync(input)) continue;
+        fs.cpSync(input, path.join(dataDir, rel), {
+            recursive: true,
+            // A fixture cannot leave a writable link back to the source.
+            filter: file => !fs.lstatSync(file).isSymbolicLink(),
+        });
+    }
+}
+
+function prepareNativeScenarios(selected, opts) {
+    if (!selected.some(s => s.nativeSave)) return selected;
+    if (!opts.nativeSave) throw new Error("The native randomizer scenario needs --native-save <fixture directory>");
+    opts.nativeSave = fs.realpathSync(opts.nativeSave);
+    fs.mkdirSync(WORK_DIR, { recursive: true });
+    const workDir = fs.realpathSync(WORK_DIR);
+    const inside = (parent, child) => {
+        const relative = path.relative(parent, child);
+        return relative !== ".." && !relative.startsWith(".." + path.sep) && !path.isAbsolute(relative);
+    };
+    if (inside(workDir, opts.nativeSave) || inside(opts.nativeSave, workDir)) {
+        throw new Error("The source fixture and --work must use separate directory trees");
+    }
+    const check = JSON.parse(fs.readFileSync(path.join(opts.nativeSave, "native-check.json"), "utf8"));
+    return selected.map(s => s.nativeSave ? { ...s, instances: s.nativeSave(check) } : s);
+}
+
 async function runScenario(scenario, opts, outRoot) {
     const outDir = path.join(outRoot, scenario.name);
     fs.mkdirSync(outDir, { recursive: true });
@@ -347,6 +381,7 @@ async function runScenario(scenario, opts, outRoot) {
             ? (sharedDir ??= prepareSlot(0, modIds, scenario.enableMods ?? []))
             : prepareSlot(index, modIds, scenario.enableMods ?? []);
         const logDir = path.join(dataDir, "logs", ...(scenario.sharedUserDir ? [inst.name] : []));
+        if (scenario.nativeSave) copyNativeSave(opts.nativeSave, dataDir);
         // Fixture files, relative to the user dir (e.g. a randomizer seed under mod_data).
         for (const [rel, content] of Object.entries({ ...scenario.files, ...inst.files })) {
             const dst = path.join(dataDir, rel);
@@ -370,8 +405,9 @@ async function runScenario(scenario, opts, outRoot) {
         const args = [
             "--user-dir", dataDir,
             "--log-dir", logDir,
-            // Skips Prelaunch; the boot takeover replaces it anyway.
-            "--stage", `${s.stage},${s.room ?? 0},${s.point ?? 0},${s.layer ?? -1}`,
+            // Synthetic scenarios skip Prelaunch; native cards use the game's save selection.
+            ...(scenario.nativeSave ? [] :
+                ["--stage", `${s.stage},${s.room ?? 0},${s.point ?? 0},${s.layer ?? -1}`]),
             ...(scripted ? ["--cvar", `${CONFIG_PREFIX}autotest_script=${scriptPath}`] : []),
             ...[...(scenario.cvars ?? []), ...(inst.cvars ?? [])].flatMap((c) => ["--cvar", c]),
         ];
@@ -400,6 +436,7 @@ async function runScenario(scenario, opts, outRoot) {
         procs.push(entry);
         placeWindow(proc.pid, index);
         console.log(`    launched ${inst.name} (pid ${proc.pid}, data ${dataDir})`);
+        if (scenario.nativeSave) console.log(`    ${inst.name}: load the fixture in private display ${opts.displayEnv.DISPLAY}`);
         await sleep(inst.launchDelayMs ?? 1500);
     }
 
@@ -515,13 +552,14 @@ async function main() {
         console.error(`game executable not found: ${opts.exe}`);
         return 2;
     }
-    const selected = opts.names.length || opts.tags.length
+    const requested = opts.names.length || opts.tags.length
         ? opts.names.map((n) => {
             const s = scenarios.all.find((x) => x.name === n);
             if (!s) throw new Error(`unknown scenario ${n} (try --list)`);
             return s;
         }).concat(tagged)
         : scenarios.all.filter((s) => !s.manualOnly);
+    const selected = prepareNativeScenarios(requested, opts);
 
     let outRoot = path.join(OUT_DIR, timestamp());
     if (fs.existsSync(outRoot)) outRoot += `-${process.pid}`;
