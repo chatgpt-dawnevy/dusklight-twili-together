@@ -46,6 +46,9 @@ Cocher un critère seulement après vérification de son périmètre complet.
   passent le scénario Linux à deux. Le vol complet reste à jouer.
 - [ ] Boss et mini-boss : inventorier les profils et acteurs secondaires. Tester chaque phase, projectile,
   vulnérabilité, scène et récompense. Vérifier une seule récompense et une sortie utilisable à deux.
+  La fin de l’Aeralfos attend que la réplique soit au sol et que
+  la scène intermédiaire du mini-boss soit passée. Il reste à partager
+  le vol, les dégâts et la transition intermédiaire, puis à valider la fin.
   Argorok passe la fin, le miroir, le cœur et la sortie dans les
   deux directions du scénario Linux. Les deux ruptures d’armure
   déclenchées par l’un ou l’autre joueur mènent les deux clients à

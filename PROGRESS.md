@@ -14,11 +14,24 @@
   sont partagés. Sa disparition à l’expiration du délai reste locale.
   Compilation Linux réussie, il reste 28 profils placés sans gestion
   explicite des dégâts ou de la défaite à qualifier, dont des acteurs de scène.
-- Baba du Crépuscule : les profils E_YD et E_YH reproduisent leur
+- PR #33 : Baba du Crépuscule : les profils E_YD et E_YH reproduisent leur
   disparition et arrêtent leurs émetteurs sur la réplique. Le drapeau
   natif distingue une défaite du déchargement de zone. Le paquet Linux
   compile. Le relevé compte 26 profils placés à qualifier. Aucun test
   ni lancement de Dusklight.
+- Aeralfos : la défaite distante entre dans l’action native au sol.
+  Pour le mini-boss, elle attend la fin de la scène intermédiaire locale.
+  La chute du casque ne génère pas d’événement de défaite. La
+  compilation Linux réussit. Le relevé compte 25 profils placés restant
+  à qualifier. Le test des fins de combat et de la progression reste ouvert.
+
+Profils de placements sans entrée explicite dans les deux listes de
+partage : `B_DS`, `B_GM`, `B_GND`, `B_MGN`, `B_OB`, `B_TN`,
+`B_ZANT`, `DR`, `E_BG`, `E_GS`, `E_HP`, `E_HZELDA`, `E_MK`,
+`E_PH`, `E_PM`, `E_PO`, `E_PZ`, `E_RDB`, `E_WB`, `E_YR`,
+`E_ZS`, `L7lowDr`, `NPC_KN`, `NPC_LF`, `OBJ_RW`. Ce relevé
+inclut des acteurs de scène et des acteurs auxiliaires. Il faut aussi
+vérifier les variantes filtrées et les apparitions dynamiques.
 
 ## 2026-11-16
 
