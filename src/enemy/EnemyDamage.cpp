@@ -78,6 +78,7 @@ bool isDamageShareable(s16 procName, u32 params) {
         const unsigned type = params & 0xFF;
         return type <= 2 || type == 0xFF;
     }
+    case fpcNm_E_FK_e:   // Phantom Rider
     case fpcNm_E_GB_e:   // Giant Baba's head
     case fpcNm_E_DT_e:   // Deku Toad
     case fpcNm_B_DR_e:   // Argorok

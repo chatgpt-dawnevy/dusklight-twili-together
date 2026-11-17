@@ -18,6 +18,7 @@
 #include "d/actor/d_a_e_ai.h"
 #include "d/actor/d_a_e_bi.h"
 #include "d/actor/d_a_e_dt.h"
+#include "d/actor/d_a_e_fk.h"
 #include "d/actor/d_a_e_fm.h"
 #include "d/actor/d_a_e_fb.h"
 #include "d/actor/d_a_e_gb.h"
@@ -489,6 +490,18 @@ void hebiBabaKill(fopAc_ac_c* ac) {
     ac->health = 0;
 }
 
+bool phantomRiderIsFading(const fopAc_ac_c* ac) {
+    return static_cast<const daE_FK_c*>(ac)->mAction == 4;
+}
+
+void phantomRiderKill(fopAc_ac_c* ac) {
+    auto& rider = *static_cast<daE_FK_c*>(ac);
+    rider.health = 0;
+    rider.mAction = 3;
+    rider.mMode = 0;
+    // Keep the native damage action in charge of the defeat animation and collision.
+}
+
 constexpr InPlaceDeath kInPlace[] = {
     {fpcNm_B_DR_e, argorokIsDead, argorokKill, argorokReady, false},
     {fpcNm_E_SM2_e, chuIsJelly, chuBecomeJelly, nullptr, false},
@@ -507,6 +520,7 @@ constexpr InPlaceDeath kInPlace[] = {
     {fpcNm_E_FB_e, freezardIsDead, freezardKill, nullptr, false},
     {fpcNm_E_BI_e, bombInsectSpent, consumeBombInsect, nullptr, false},
     {fpcNm_E_HB_e, hebiBabaIsDead, hebiBabaKill, nullptr, false},
+    {fpcNm_E_FK_e, phantomRiderIsFading, phantomRiderKill, nullptr, false},
     {fpcNm_E_DT_e, dekuToadIsDead, dekuToadKill, dekuToadReady, false},
     {fpcNm_E_FM_e, fyrusIsDead, fyrusKill, fyrusReady, false},
     {fpcNm_E_YMB_e, twilitBloatIsDead, twilitBloatKill, twilitBloatReady, false},
@@ -615,6 +629,7 @@ bool isKillSyncable(s16 procName, u32 params) {
     case fpcNm_E_HZ_e:   // Tile Worm (defeated in place)
     case fpcNm_E_GB_e:   // Giant Baba
     case fpcNm_E_BI_e:   // Bomb Insect
+    case fpcNm_E_FK_e:   // Phantom Rider
     case fpcNm_E_HB_e:   // Hebi Baba
         return true;
     case fpcNm_B_DR_e:   // The main Argorok actor, excluding its part variants.
@@ -967,6 +982,10 @@ void onActorCreated(fopAc_ac_c* ac) {
 
 bool onDisappear(const fopAc_ac_c* ac, uint8_t size, uint8_t type) {
     if (Record* r = live(ac)) {
+        // The Phantom Rider also plays this puff when its local lifetime ends.
+        if (r->key.procName == fpcNm_E_FK_e && ac->health > 0) {
+            return false;
+        }
         r->disappearAt = Clock::now();
         r->fxSize = size;
         r->fxType = type;
@@ -974,7 +993,7 @@ bool onDisappear(const fopAc_ac_c* ac, uint8_t size, uint8_t type) {
         return r->remoteBabaHead || (r->remoteRemoved &&
                (r->key.procName == fpcNm_E_HM_e || r->key.procName == fpcNm_E_AI_e ||
                 r->key.procName == fpcNm_E_ZM_e || r->key.procName == fpcNm_E_SW_e ||
-                r->key.procName == fpcNm_E_GB_e));
+                r->key.procName == fpcNm_E_GB_e || r->key.procName == fpcNm_E_FK_e));
     }
     return false;
 }

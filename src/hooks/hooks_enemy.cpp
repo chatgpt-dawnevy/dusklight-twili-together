@@ -17,6 +17,7 @@
 #include "d/actor/d_a_e_dt.h"
 #include "d/actor/d_a_e_fz.h"
 #include "d/actor/d_a_e_fb.h"
+#include "d/actor/d_a_e_fk.h"
 #include "d/actor/d_a_e_oc.h"
 #include "d/actor/d_a_e_s1.h"
 #include "d/d_cc_uty.h"
@@ -42,6 +43,7 @@ DEFINE_HOOK(&daE_OC_c::executeFallDead, EocExecuteFallDead);
 DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_s1.cpp#all_fail", void(e_s1_class*), Es1AllFail);
 DEFINE_HOOK_SYMBOL("src/d/actor/d_a_e_s1.cpp#e_s1_shout", void(e_s1_class*), Es1Shout);
 DEFINE_HOOK(&cc_at_check, CcAtCheck);
+DEFINE_HOOK(&daE_FK_c::At_Check, PhantomRiderAtCheck);
 DEFINE_HOOK_SYMBOL("src/d/d_stage.cpp#dStage_actorCreate",
     void(stage_actor_data_class*, fopAcM_prm_class*, size_t), StageActorCreate);
 DEFINE_HOOK(&fpcSCtRq_Request, StdCreateRequest);
@@ -229,6 +231,8 @@ ModResult installEnemyCount(std::string& error) {
 
 ModResult installEnemyDamage(std::string& error) {
     const ModResult results[] = {
+        addPre<PhantomRiderAtCheck>(onCcAtCheckPre, kObserve, "daE_FK_c::At_Check", error),
+        addPost<PhantomRiderAtCheck>(onCcAtCheckPost, kDefault, "daE_FK_c::At_Check", error),
         addPre<CcAtCheck>(onCcAtCheckPre, kObserve, "cc_at_check", error),
         addPost<CcAtCheck>(onCcAtCheckPost, kDefault, "cc_at_check", error),
     };
