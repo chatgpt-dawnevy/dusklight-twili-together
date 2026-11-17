@@ -78,6 +78,10 @@ bool isDamageShareable(s16 procName, u32 params) {
         const unsigned type = params & 0xFF;
         return type <= 2 || type == 0xFF;
     }
+    case fpcNm_E_HP_e:   // Poe with a native knockdown and extraction
+    case fpcNm_E_YR_e:   // Twilit Kargorok
+    case fpcNm_E_MK_e:   // Ook
+    case fpcNm_E_RDB_e:  // King Bulblin on foot
     case fpcNm_E_FK_e:   // Phantom Rider
     case fpcNm_E_GB_e:   // Giant Baba's head
     case fpcNm_E_DT_e:   // Deku Toad

@@ -67,6 +67,8 @@ enum class ScopeKind : uint8_t {
     EnemyDamage,
     StagePlaced,
     FreezardSplit,
+    StallordTransition,
+    KargorokDefeat,
     DmapDraw,
     FmapDraw,
 };

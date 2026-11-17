@@ -1,5 +1,32 @@
 # Twili-Together — avancement
 
+## Profils restants dans la branche `feature/remaining-enemy-encounters`
+
+Les correctifs sont regroupés sur une branche au-dessus de la PR #34.
+Le format réseau de défaite reste inchangé.
+
+| Profils | Gestion implémentée | Validation ou développement restant |
+| --- | --- | --- |
+| `B_DS`, `B_OB`, `B_GM` | Fin native de Stallord, Morpheel et Armogohma. La défaite reçue peut amorcer la transition nécessaire sur la réplique. Le remplacement du corps par la tête de Stallord conserve la clé de placement et l’incarnation. | Jeux à deux pour chaque transition, attaques des formes intermédiaires, apparition unique des récompenses et sortie. |
+| `E_HZELDA`, `B_MGN`, `B_GND`, `B_ZANT` | Entrées natives des fins de Zelda possédée, Ganon bestial, Ganondorf à pied et Zant. Ganondorf peut rejouer la chute préalable à l’estoc final. Ganon bestial attend sa phase au sol, Zant attend sa phase finale. | Montures, changements d’arène et phases précédentes. Vérifier les scènes, la reprise et la progression avec une différence de phase entre les joueurs. |
+| `B_TN`, `E_MK`, `E_PZ`, `E_RDB` | Fins natives du Darknut, d’Ook, des deux acteurs principaux de Zant Fantôme et du Roi Bulblin à pied. Le Darknut peut rejouer la perte d’armure. | Coups non létaux, attaques, acteurs associés, autres rencontres montées du Roi Bulblin et progression à deux. |
+| `E_PM`, `E_HP`, `E_PO` | Fin du combat final de Skull Kid. Extraction des âmes sur le chemin de récompense existant. La réplique ne réclame pas le même objet au jeu. | Rencontres précédentes de Skull Kid. Pour chaque famille de Poe, vérifier extraction et récompense dans les deux sens, y compris en randomizer. |
+| `E_BG`, `E_YR`, `E_ZS` | Consommation du Bomb Fish, défaite native des Kargoroks du Crépuscule en combat et des soldats de Stallord. Une défaite distante du Kargorok n’effectue pas un second tirage de butin. | Spawners et réapparitions, conversions du Bomb Fish en bombe, variantes de transport et cohérence des collisions et des attaques. |
+
+Huit profils du relevé ne correspondent pas à une défaite normale
+d’ennemi placée. Les Peahats (`E_PH`) réagissent aux impacts et servent
+de points de grappin. Les Bullbos (`E_WB`) sont des montures dont le
+code rétablit les PV pendant la logique de collision. Leurs réactions et
+déplacements restent à synchroniser avec le combat. `E_GS` est un
+soldat spectral d’ambiance, `DR` et `L7lowDr` pilotent des apparitions
+du dragon, `NPC_KN` est le formateur des bottes secrètes, `NPC_LF`
+représente les petits poissons et `OBJ_RW` la pièce de gibier rôtie.
+
+La compilation Linux x86-64 de la branche est consignée séparément de
+la validation à deux. Aucun test exécuté et aucun lancement de Dusklight
+sur cette branche à la demande de l’utilisateur. Le paquet Windows
+de cette branche reste à produire.
+
 ## 2026-11-17
 
 - PR #30 : le grand Freezard déclenche sa division native et associe
