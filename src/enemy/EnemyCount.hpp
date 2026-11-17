@@ -40,6 +40,7 @@ int extrasInRoom(int roomNo);
 // added to kBroodSetId as setId. Readable until the child's create returns.
 inline constexpr uint16_t kBroodSetId = 0xC000;
 void onDirectChildRequested(fpc_ProcID id, s16 profile, const fopAcM_prm_class& prm);
+void onFreezardChildRequested(fpc_ProcID id, const enemy_sync::SpawnKey& parent, unsigned ordinal);
 bool broodKey(fopAc_ac_c* child, enemy_sync::SpawnKey& out);
 // The child at `index` of a spawner's list, or fpcM_ERROR_PROCESS_ID_e.
 fpc_ProcID broodChild(fpc_ProcID spawnerId, int index);

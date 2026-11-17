@@ -147,6 +147,8 @@ struct DirectBrood {
     std::unordered_map<fpc_ProcID, uint16_t> children;
 };
 std::unordered_map<fpc_ProcID, DirectBrood> s_directBroods;
+// A large Freezard deletes itself before its four Mini Freezards finish creating.
+std::unordered_map<fpc_ProcID, enemy_sync::SpawnKey> s_freezardChildren;
 
 const DupSpec* findSpec(s16 procName, u32 params, Place& place) {
     for (const DupSpec& s : kDupSpecs) {
@@ -521,6 +523,7 @@ void onActorDeleted(fopAc_ac_c* ac) {
     s_broods.erase(id);
     s_broodSlots.erase(id);
     s_directBroods.erase(id);
+    s_freezardChildren.erase(id);
     if (const auto nest = s_directBroods.find(ac->parentActorID); nest != s_directBroods.end()) {
         nest->second.children.erase(id);
     }
@@ -572,7 +575,23 @@ void onDirectChildRequested(fpc_ProcID id, s16 profile, const fopAcM_prm_class& 
     nest.children.emplace(id, nest.next++);
 }
 
+void onFreezardChildRequested(fpc_ProcID id, const enemy_sync::SpawnKey& parent, unsigned ordinal) {
+    if (id == fpcM_ERROR_PROCESS_ID_e || ordinal >= 4 || s_freezardChildren.size() >= kMaxPlaced) return;
+    constexpr unsigned kFreezardChildSetId = 0x8000;
+    auto child = parent;
+    child.procName = fpcNm_E_FZ_e;
+    child.params = 1;
+    child.setId = static_cast<uint16_t>(kFreezardChildSetId + (parent.setId & 0xFFF) * 4 + ordinal);
+    s_freezardChildren.emplace(id, child);
+}
+
 bool broodKey(fopAc_ac_c* ac, enemy_sync::SpawnKey& out) {
+    const auto child = s_freezardChildren.find(fopAcM_GetID(ac));
+    if (child != s_freezardChildren.end()) {
+        out = child->second;
+        s_freezardChildren.erase(child);
+        return true;
+    }
     const fopAcM_prm_class* prm = fopAcM_GetAppend(ac);
     if (prm == nullptr || prm->parent_id == fpcM_ERROR_PROCESS_ID_e) {
         return false;
@@ -709,6 +728,7 @@ void shutdown() {
     s_broods.clear();
     s_broodSlots.clear();
     s_directBroods.clear();
+    s_freezardChildren.clear();
 }
 
 }  // namespace twili::enemy_count
