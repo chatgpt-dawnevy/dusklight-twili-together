@@ -1,5 +1,16 @@
 # Twili-Together — avancement
 
+## 2026-11-17
+
+- PR #30 : le grand Freezard déclenche sa division native et associe
+  chaque petit Freezard à l’ordre de création du parent.
+- Le Hebi Baba reproduit la séquence de défaite et préserve sa feuille,
+  le drapeau de placement et la libération native du fruit. La consommation
+  du Bomb Insect retire sa réplique sans déclencher une seconde explosion.
+  La compilation du paquet Linux réussit. Aucun test ni lancement de
+  Dusklight pour ces changements. Le relevé des placements laisse
+  29 profils sans gestion explicite des dégâts ou de la défaite.
+
 ## 2026-11-16
 
 - Le fork public est `chatgpt-dawnevy/dusklight-twili-together`. Base amont `0c61df4`.
