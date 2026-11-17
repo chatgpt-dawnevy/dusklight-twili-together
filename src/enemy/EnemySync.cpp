@@ -14,6 +14,7 @@
 #include "d/d_kankyo.h"  // LIGHT_INFLUENCE for d_a_e_fm.h
 
 #include "d/actor/d_a_b_bq.h"
+#include "d/actor/d_a_b_gg.h"
 #include "d/actor/d_a_b_yo.h"
 #include "d/actor/d_a_e_ai.h"
 #include "d/actor/d_a_e_bi.h"
@@ -531,7 +532,45 @@ void twilitBabaKill(fopAc_ac_c* ac) {
     }
 }
 
+constexpr u8 kAeralfosDungeon = 0;
+constexpr u8 kAeralfosGround = 1;
+constexpr u8 kAeralfosDeath = 4;
+constexpr int kAeralfosDungeonDeathAnimation = 0x15;
+constexpr int kAeralfosDeathAnimation = 0x1F;
+
+bool aeralfosIsDead(const fopAc_ac_c* ac) {
+    const auto& aeralfos = *static_cast<const daB_GG_c*>(ac);
+    return aeralfos.mAction == kAeralfosGround && aeralfos.mSubAction == kAeralfosDeath;
+}
+
+bool aeralfosCanDie(const fopAc_ac_c* ac) {
+    const auto& aeralfos = *static_cast<const daB_GG_c*>(ac);
+    // Wait for the local landing and the dungeon mini-boss's intermediate cutscene.
+    return aeralfos.mAction == kAeralfosGround && aeralfos.mAcch.ChkGroundHit() &&
+           (aeralfos.mType != kAeralfosDungeon || aeralfos.field_0x5b0 != 0);
+}
+
+void aeralfosKill(fopAc_ac_c* ac) {
+    auto& aeralfos = *static_cast<daB_GG_c*>(ac);
+    const bool dungeon = aeralfos.mType == kAeralfosDungeon;
+    aeralfos.health = 0;
+    aeralfos.attention_info.flags = 0;
+    aeralfos.speedF = 0.0f;
+    aeralfos.field_0x5bc = 0.0f;
+    aeralfos.mCamMode = 0;
+    aeralfos.SetAction(kAeralfosGround, kAeralfosDeath, 0);
+    aeralfos.SetAnm(dungeon ? kAeralfosDungeonDeathAnimation : kAeralfosDeathAnimation,
+                   0, 5.0f, 1.0f);
+    if (!dungeon) {
+        aeralfos.mCcCyl.OffTgSetBit();
+        aeralfos.mCcShieldSph.OffTgSetBit();
+        aeralfos.mCcHookCyl.OffTgSetBit();
+    }
+    Z2GetAudioMgr()->subBgmStop();
+}
+
 constexpr InPlaceDeath kInPlace[] = {
+    {fpcNm_B_GG_e, aeralfosIsDead, aeralfosKill, nullptr, false, aeralfosCanDie},
     {fpcNm_B_DR_e, argorokIsDead, argorokKill, argorokReady, false},
     {fpcNm_E_SM2_e, chuIsJelly, chuBecomeJelly, nullptr, false},
     {fpcNm_B_YO_e, blizzetaIsDead, blizzetaKill, blizzetaReady, false},
@@ -648,6 +687,7 @@ bool isKillSyncable(s16 procName, u32 params) {
     case fpcNm_E_TK_e:   // Water Toadpoli
     case fpcNm_E_TK2_e:  // Fire Toadpoli
     case fpcNm_E_WS_e:   // Wall Skulltula
+    case fpcNm_B_GG_e:   // Aeralfos
     case fpcNm_B_BQ_e:   // Diababa
     case fpcNm_B_YO_e:   // Blizzeta
     case fpcNm_E_GOB_e:  // Dangoro
@@ -1025,6 +1065,10 @@ bool onDisappear(const fopAc_ac_c* ac, uint8_t size, uint8_t type) {
         if (r->key.procName == fpcNm_E_FK_e && ac->health > 0) {
             return false;
         }
+        // The Aeralfos helmet also produces a puff, outside the actual defeat.
+        if (r->key.procName == fpcNm_B_GG_e && !aeralfosIsDead(ac)) {
+            return false;
+        }
         r->disappearAt = Clock::now();
         r->fxSize = size;
         r->fxType = type;
@@ -1032,7 +1076,8 @@ bool onDisappear(const fopAc_ac_c* ac, uint8_t size, uint8_t type) {
         return r->remoteBabaHead || (r->remoteRemoved &&
                (r->key.procName == fpcNm_E_HM_e || r->key.procName == fpcNm_E_AI_e ||
                 r->key.procName == fpcNm_E_ZM_e || r->key.procName == fpcNm_E_SW_e ||
-                r->key.procName == fpcNm_E_GB_e || r->key.procName == fpcNm_E_FK_e));
+                r->key.procName == fpcNm_E_GB_e || r->key.procName == fpcNm_E_FK_e ||
+                r->key.procName == fpcNm_B_GG_e));
     }
     return false;
 }
